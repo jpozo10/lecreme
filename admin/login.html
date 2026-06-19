@@ -42,9 +42,18 @@
 
         errorEl.style.display = 'none';
 
+        // Intentamos capturar el cliente global inicializado por config.js
+        const supabaseClient = window.sb;
+
+        if (!supabaseClient) {
+            errorEl.textContent = "Error interno: No se pudo enlazar la configuración de Supabase.";
+            errorEl.style.display = 'block';
+            return;
+        }
+
         try {
-            // Utiliza la variable 'sb' que se cargó automáticamente desde ../config.js
-            const { data, error } = await sb.auth.signInWithPassword({
+            // Petición de autenticación a Supabase Auth usando las cajas de texto
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
@@ -53,11 +62,11 @@
                 errorEl.textContent = "Error: " + error.message;
                 errorEl.style.display = 'block';
             } else {
-                // Al loguearse correctamente, redirige al index.html que está en la misma carpeta admin/
+                // Si todo está correcto, nos redirige al index.html de administración
                 window.location.href = 'index.html';
             }
         } catch (err) {
-            errorEl.textContent = "Error de conexión: " + err.message;
+            errorEl.textContent = "Error inesperado: " + err.message;
             errorEl.style.display = 'block';
         }
     });
