@@ -9,8 +9,7 @@ const productosCache = {};   // id_producto -> fila de productos
 const categoriasConfig = {}; // id_categoria -> fila de categorias (para saber lleva_toppings)
 const combosCache = {};      // id_combo -> fila de combos
 
-const LOGO_URL = 'assets/logo.png'; // pon aquí tu logo, o una URL de Supabase Storage
-
+const LOGO_URL = 'https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/IMAGEN%20LECREME.jpg'; 
 document.addEventListener('DOMContentLoaded', function () {
     renderizarPagina();
     renderizarCombos();
@@ -495,11 +494,13 @@ async function confirmarAgregado() {
             const { data: itemActual } = await sb.from('carrito_items').select('cantidad').eq('id', idExistente).single();
             await sb.from('carrito_items').update({ cantidad: (itemActual ? itemActual.cantidad : 1) + 1 }).eq('id', idExistente);
         } else {
+            // CORRECCIÓN AQUÍ: Se añade "id_combo: null" para evitar conflictos de restricciones en la base de datos
             const { data: nuevoItem, error } = await sb
                 .from('carrito_items')
                 .insert({
                     session_id: sessionId,
                     id_producto: idProductoSeleccionado,
+                    id_combo: null, 
                     id_tamanio: idTamanio,
                     cantidad: 1,
                     precio_unitario: precioUnitario,
@@ -521,7 +522,7 @@ async function confirmarAgregado() {
         actualizarContadorYDatosCarrito();
     } catch (err) {
         console.error('Error al agregar al carrito:', err);
-        alert('Hubo un error al agregar el producto al carrito.');
+        alert('Hubo un error al agregar el producto al carrito. Revisa la consola para más detalles.');
     }
 }
 
