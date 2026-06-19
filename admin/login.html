@@ -6,6 +6,7 @@
   <title>Le Crème — Login Admin</title>
   <link rel="stylesheet" href="admin.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config.js"></script>
 </head>
 <body class="adm-login-body">
 
@@ -27,17 +28,12 @@
       </div>
       
       <div class="adm-btn-guardar-wrapper" style="padding: 20px 0 0 0;">
-        <button type="submit" class="adm-btn-primary" style="width: 100%; height: 45px; font-size: 1rem;">Ingresar al Panel</button>
+        <button type="submit" class="adm-btn-primary" style="width: 100%; height: 45px; font-size: 1rem; cursor: pointer;">Ingresar al Panel</button>
       </div>
     </form>
   </div>
 
-  <script type="module">
-    // Importamos la instancia de Supabase de tu proyecto
-    // Nota: Asegúrate de tener configurado tu cliente 'sb' globalmente.
-    // Como tu admin.js usa 'sb', aquí usaremos el mismo objeto.
-    import { sb } from './admin.js'; 
-
+  <script>
     document.getElementById('form-login-admin').addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('login-email').value.trim();
@@ -46,18 +42,23 @@
 
         errorEl.style.display = 'none';
 
-        // Intentar loguear en Supabase Auth
-        const { data, error } = await window.sb.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
+        try {
+            // Utiliza la variable 'sb' que se cargó automáticamente desde ../config.js
+            const { data, error } = await sb.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
 
-        if (error) {
-            errorEl.textContent = "Error: " + error.message;
+            if (error) {
+                errorEl.textContent = "Error: " + error.message;
+                errorEl.style.display = 'block';
+            } else {
+                // Al loguearse correctamente, redirige al index.html que está en la misma carpeta admin/
+                window.location.href = 'index.html';
+            }
+        } catch (err) {
+            errorEl.textContent = "Error de conexión: " + err.message;
             errorEl.style.display = 'block';
-        } else {
-            // Si es correcto, Supabase guarda la sesión y te mandamos al panel
-            window.location.href = 'index.html';
         }
     });
   </script>
