@@ -8,7 +8,7 @@ let idProductoSeleccionado = 0;
 const productosCache = {};   // id_producto -> fila de productos
 const categoriasConfig = {}; // id_categoria -> fila de categorias (para saber lleva_toppings)
 
-const LOGO_URL = 'assets/logo.png'; // pon aquí tu logo, o una URL de Supabase Storage
+const LOGO_URL = 'https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/pagina%20Le%20creme_logo.png'; // pon aquí tu logo, o una URL de Supabase Storage
 
 document.addEventListener('DOMContentLoaded', function () {
     renderizarPagina();
