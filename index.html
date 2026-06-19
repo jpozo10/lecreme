@@ -3,12 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Le Creme</title>
+  <title>Le Crème</title>
   <link rel="stylesheet" href="style.css">
-
-  <link rel="icon" type="image/png" sizes="16x16" href="https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/favicon-16x16.png">
-  <meta name="msapplication-TileColor" content="#ffffff">
-  <meta name="theme-color" content="#ffffff">
 </head>
 <body>
 
@@ -24,6 +20,12 @@
   <h3 class="lc-title">Categorías</h3>
   <div class="lc-categories-list" id="lc-categories-list">
     <p style="padding:10px; color:#9C5F5A; font-size:0.85rem;">Cargando categorías...</p>
+  </div>
+
+  <!-- 2B. COMBOS (solo se muestra si hay combos activos) -->
+  <div id="lc-combos-wrapper" class="lc-products-wrapper" style="display:none;">
+    <h3 class="lc-title">🎁 Combos especiales</h3>
+    <div class="lc-products-grid" id="lc-combos-grid"></div>
   </div>
 
   <!-- 3. PRODUCTOS (se llenan dinámicamente desde Supabase) -->
