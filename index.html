@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Crème</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 1. HEADER -->
+  <div class="lc-header">
+    <div class="lc-logo-container">
+      <img src="assets/logo.png" class="lc-app-logo" alt="Le Crème">
+    </div>
+    <input type="text" id="lc-home-search" placeholder="Buscar productos..." class="lc-search" onkeyup="filtrarProductosHome()">
+  </div>
+
+  <!-- 2. CATEGORÍAS (se llenan dinámicamente desde Supabase) -->
+  <h3 class="lc-title">Categorías</h3>
+  <div class="lc-categories-list" id="lc-categories-list">
+    <p style="padding:10px; color:#9C5F5A; font-size:0.85rem;">Cargando categorías...</p>
+  </div>
+
+  <!-- 3. PRODUCTOS (se llenan dinámicamente desde Supabase) -->
+  <div id="lc-products-sections"></div>
+
+  <!-- 4. MODAL DE PRODUCTO / TOPPINGS -->
+  <div id="lc-topping-modal" class="lc-modal">
+    <div class="lc-modal-content">
+      <div class="lc-modal-header">
+        <h3 id="modal-product-name">Personalizar Postre</h3>
+        <span class="lc-modal-close" onclick="cerrarModal()">&times;</span>
+      </div>
+      <div class="lc-modal-body">
+        <img id="modal-product-img" src="" class="lc-modal-preview-img">
+        <p id="modal-product-description" style="font-size:14px; color:#555; font-style:italic; text-align:center; margin-bottom:15px; padding:0 10px;"></p>
+        <p class="lc-modal-section-title">Escoge el Tamaño:</p>
+        <div id="modal-tamanio-container" style="margin-bottom: 15px;">
+          <select id="lc-product-tamanio" class="lc-cart-select" style="width:100%; padding:8px; border-radius:5px; border:1px solid #ccc;"></select>
+        </div>
+
+        <div id="lc-toppings-wrapper-block">
+          <p id="titulo-toppings" class="lc-modal-section-title">Elige los Toppings que desees:</p>
+          <div id="modal-toppings-container"></div>
+        </div>
+
+        <p class="lc-modal-section-title">Observaciones especiales:</p>
+        <textarea id="modal-observaciones" placeholder="Ej. Sin leche condensada..."></textarea>
+      </div>
+      <div class="lc-modal-footer">
+        <div class="lc-modal-total">Total: <span id="modal-total-price">$0</span></div>
+        <button type="button" class="lc-btn-confirm" onclick="confirmarAgregado(); return false;">Agregar al Carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4B. MODAL DE PROPINA -->
+  <div id="lc-tip-modal" class="lc-modal" onclick="if(event.target===this){cerrarModalPropina();}">
+    <div class="lc-modal-content" style="max-height:85vh; overflow-y:auto;">
+      <div class="lc-modal-header">
+        <h3>💝 ¿Deseas agregar una propina?</h3>
+        <span class="lc-modal-close" onclick="cerrarModalPropina()">&times;</span>
+      </div>
+      <div class="lc-modal-body">
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="lc-tip-btn-si" onclick="responderPropina(true)"
+            style="flex:1; padding:8px 0; border:1.5px solid #D67280; border-radius:20px; background:#fff; color:#9C5F5A; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
+            Sí 🙌</button>
+          <button type="button" id="lc-tip-btn-no" onclick="responderPropina(false)"
+            style="flex:1; padding:8px 0; border:1.5px solid #D67280; border-radius:20px; background:#fff; color:#9C5F5A; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
+            No, gracias</button>
+        </div>
+
+        <div id="lc-tip-detail" style="display:none; margin-top:14px;">
+          <p style="margin:0 0 6px 0; font-size:0.85rem; color:#9C5F5A; font-weight:600;">Tipo de propina:</p>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" id="lc-tip-tipo-pct" onclick="seleccionarTipoPropina('porcentaje')"
+              style="flex:1; padding:6px 0; border:1.5px solid #D67280; border-radius:20px; background:#D67280; color:#fff; font-size:0.85rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
+              % Porcentaje</button>
+            <button type="button" id="lc-tip-tipo-val" onclick="seleccionarTipoPropina('valor')"
+              style="flex:1; padding:6px 0; border:1.5px solid #D67280; border-radius:20px; background:#fff; color:#9C5F5A; font-size:0.85rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
+              $ Valor fijo</button>
+          </div>
+          <p id="lc-tip-label-input" style="margin:0 0 4px 0; font-size:0.85rem; color:#9C5F5A; font-weight:600;">Ingresa el porcentaje (%):</p>
+          <input type="number" id="lc-tip-input-valor" data-tipo="porcentaje"
+            placeholder="Ej: 10" min="0"
+            oninput="actualizarPropina()"
+            style="width:100%; box-sizing:border-box; padding:9px 12px; border:1.5px solid #D67280; border-radius:8px; font-size:0.95rem; color:#6D3B37; outline:none; margin-bottom:6px;">
+          <p id="lc-tip-monto-label" style="display:none; margin:4px 0 0 0; font-size:0.85rem; font-weight:700; color:#D67280; text-align:right;"></p>
+        </div>
+      </div>
+      <div class="lc-modal-footer">
+        <button type="button" class="lc-btn-confirm" onclick="guardarPropina()">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. BOTÓN FLOTANTE DEL CARRITO -->
+  <div class="lc-cart-floating-btn" onclick="abrirPanelCarrito()">
+    <span class="lc-cart-icon">🛒</span>
+    <div id="lc-cart-count" class="lc-cart-badge">0</div>
+  </div>
+
+  <!-- 6. PANEL LATERAL DEL CARRITO -->
+  <div id="lc-cart-panel" class="lc-cart-sidebar">
+    <div class="lc-cart-sidebar-header">
+      <h3>Mi Carrito</h3>
+      <span class="lc-cart-sidebar-close" onclick="cerrarPanelCarrito()">&times;</span>
+    </div>
+    <div class="lc-cart-sidebar-body" id="lc-cart-items-container"></div>
+    <div class="lc-cart-options">
+      <label class="lc-option-label">Método de Entrega:</label>
+      <select id="lc-cart-entrega" class="lc-cart-select" onchange="actualizarContadorYDatosCarrito()">
+        <option value="Domicilio">📍 Domicilio</option>
+        <option value="Retiro">🏪 Retiro en Tienda</option>
+      </select>
+      <input type="text" id="lc-cart-direccion" class="lc-cart-select" placeholder="Escribe tu dirección aquí..." style="margin-top:10px;">
+
+      <label class="lc-option-label" style="margin-top: 10px;">Método de Pago:</label>
+      <select id="lc-cart-pago" class="lc-cart-select">
+        <option value="Transferencia">💳 Transferencia Bancaria</option>
+        <option value="Efectivo">💵 Efectivo</option>
+      </select>
+    </div>
+
+    <div class="lc-cart-sidebar-footer">
+      <p style="font-size:0.72rem; color:#9C5F5A; font-style:italic; margin:6px 0 10px 0; line-height:1.4;">
+        ¿Deseas agregar propina?
+      </p>
+      <div id="lc-tip-toggle" onclick="abrirModalPropina()" style="display:flex; justify-content:space-between; align-items:center; background:#fcedeb; border-radius:10px; padding:10px 14px; margin-bottom:10px; cursor:pointer;">
+        <span style="font-size:0.85rem; font-weight:700; color:#6D3B37;">💝 <span id="lc-tip-resumen">Agregar propina</span></span>
+        <span style="color:#D67280; font-weight:bold;">›</span>
+      </div>
+
+      <div class="lc-cart-sidebar-total">Total Compra: <span id="lc-cart-grand-total" data-subtotal="0">$0</span></div>
+      <p style="font-size:0.72rem; color:#9C5F5A; font-style:italic; margin:6px 0 10px 0; line-height:1.4;">
+        🛵 El valor del domicilio es de <strong>$5.000</strong>, aunque puede variar según la distancia. El valor exacto será confirmado por el negocio.
+      </p>
+      <button type="button" class="lc-btn-checkout" onclick="procesarPedidoWhatsApp()">Confirmar Pedido 📲</button>
+    </div>
+  </div>
+
+  <!-- Librería oficial de Supabase (UMD, crea window.supabase) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- Tu configuración de proyecto (URL + anon key) -->
+  <script src="config.js"></script>
+  <!-- Lógica de la tienda -->
+  <script src="app.js" defer></script>
+</body>
+</html>
