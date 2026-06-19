@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Crème — Login Admin</title>
+  <link rel="stylesheet" href="admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="adm-login-body">
+
+  <div class="adm-login-card">
+    <h2>Le Crème</h2>
+    <p class="adm-login-subtitle">Panel de Administración</p>
+    
+    <div id="login-error-msg" class="adm-toast adm-toast-error" style="position: static; opacity: 1; pointer-events: auto; margin-bottom: 20px; display: none;"></div>
+    
+    <form id="form-login-admin">
+      <div class="adm-form-group" style="text-align: left;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--adm-brown);">Correo Electrónico:</label>
+        <input type="email" id="login-email" class="adm-form-control" placeholder="admin@lecreme.com" required>
+      </div>
+      
+      <div class="adm-form-group" style="text-align: left; margin-top: 15px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600; color: var(--adm-brown);">Contraseña:</label>
+        <input type="password" id="login-password" class="adm-form-control" placeholder="••••••••" required>
+      </div>
+      
+      <div class="adm-btn-guardar-wrapper" style="padding: 20px 0 0 0;">
+        <button type="submit" class="adm-btn-primary" style="width: 100%; height: 45px; font-size: 1rem;">Ingresar al Panel</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    // Importamos la instancia de Supabase de tu proyecto
+    // Nota: Asegúrate de tener configurado tu cliente 'sb' globalmente.
+    // Como tu admin.js usa 'sb', aquí usaremos el mismo objeto.
+    import { sb } from './admin.js'; 
+
+    document.getElementById('form-login-admin').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errorEl = document.getElementById('login-error-msg');
+
+        errorEl.style.display = 'none';
+
+        // Intentar loguear en Supabase Auth
+        const { data, error } = await window.sb.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+
+        if (error) {
+            errorEl.textContent = "Error: " + error.message;
+            errorEl.style.display = 'block';
+        } else {
+            // Si es correcto, Supabase guarda la sesión y te mandamos al panel
+            window.location.href = 'index.html';
+        }
+    });
+  </script>
+</body>
+</html>
