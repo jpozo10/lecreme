@@ -63,65 +63,148 @@ function mostrarMensajeExito(texto) {
 // ─────────────────────────────────────────────────────────
 
 async function renderizarPagina() {
-    const listaCategorias = document.getElementById('lc-categories-list');
-    const seccionesProductos = document.getElementById('lc-products-sections');
-
+    // ─── 1. INSTAGRAM DINÁMICO DESDE LA TABLA lc_configuracion ───
     try {
-        const { data: categorias, error } = await sb
-            .from('categorias')
+        const { data: configData, error: configErr } = await sb
+            .from('lc_configuracion')
             .select('*')
-            .eq('activo', 'S')
-            .order('orden_mostrar', { ascending: true })
-            .order('id_categoria', { ascending: true });
+            .maybeSingle();
 
-        if (error) throw error;
+        if (!configErr && configData) {
+            const banner = document.getElementById('lc-instagram-banner');
+            const link = document.getElementById('lc-instagram-link');
+            const userText = document.getElementById('lc-instagram-user');
 
-        listaCategorias.innerHTML = '';
-        seccionesProductos.innerHTML = '';
-
-        if (!categorias || categorias.length === 0) {
-            listaCategorias.innerHTML = '<p style="padding:10px; color:#888;">No hay categorías activas todavía.</p>';
-            return;
+            // Valida que el HTML tenga los elementos y que Supabase devuelva la información
+            if (banner && link && userText && configData.instagram_user && configData.instagram_url) {
+                userText.textContent = configData.instagram_user;
+                link.href = configData.instagram_url;
+                banner.style.display = 'flex'; // Hace visible el banner elegantemente
+            }
         }
+    } catch (e) {
+        console.error("Error cargando el banner de Instagram:", e);
+    }
 
-        categorias.forEach(cat => {
-            categoriasConfig[cat.id_categoria] = cat;
-            listaCategorias.appendChild(crearCategoriaItem(cat));
-        });
+    // ─── 2. CARGA DE CATEGORÍAS (Lógica original de Le Crème) ───
+    const categoriesContainer = document.getElementById('lc-categories-list');
+    if (!categoriesContainer) return;
 
-        for (const cat of categorias) {
-            const wrapper = document.createElement('div');
-            wrapper.id = 'sec-' + cat.id_categoria;
-            wrapper.className = 'lc-products-wrapper';
+    // Obtener categorías activas de Supabase ordenadas por su posición/orden
+    const { data: categorias, error: catError } = await sb
+        .from('categorias')
+        .select('*')
+        .order('id_categoria', { ascending: true });
 
-            const titulo = document.createElement('h3');
-            titulo.className = 'lc-title';
-            titulo.textContent = cat.nombre;
-            wrapper.appendChild(titulo);
+    if (catError) {
+        console.error("Error al cargar categorías:", catError);
+        categoriesContainer.innerHTML = `<p style="padding:10px; color:#e74c3c;">Error al conectar con la tienda.</p>`;
+        return;
+    }
 
-            const grid = document.createElement('div');
-            grid.className = 'lc-products-grid';
-            wrapper.appendChild(grid);
+    if (!categorias || categorias.length === 0) {
+        categoriesContainer.innerHTML = `<p style="padding:10px; color:#9C5F5A;">No hay categorías disponibles.</p>`;
+        return;
+    }
 
-            seccionesProductos.appendChild(wrapper);
+    // Limpiar el contenedor de "Cargando..."
+    categoriesContainer.innerHTML = '';
 
-            const { data: productos, error: errProd } = await sb
-                .from('productos')
-                .select('*')
-                .eq('id_categoria', cat.id_categoria)
-                .eq('activo', 'S')
-                .order('nombre', { ascending: true });
+    // Guardar en caché local para usarlo en la personalización de toppings
+    categorias.forEach(cat => {
+        categoriasConfig[cat.id_categoria] = cat;
+    });
 
-            if (errProd) { console.error('Error cargando productos:', errProd); continue; }
+    // Renderizar los botones circulares de las categorías superiores
+    categorias.forEach((cat, index) => {
+        const catItem = document.createElement('div');
+        catItem.className = `lc-category-item ${index === 0 ? 'active' : ''}`;
+        catItem.setAttribute('data-id', cat.id_categoria);
+        catItem.onclick = () => seleccionarCategoriaMenu(cat.id_categoria);
 
-            (productos || []).forEach(prod => {
-                productosCache[prod.id_producto] = prod;
-                grid.appendChild(crearProductoCard(prod));
+        const imgUrl = cat.imagen_url || LOGO_URL;
+        catItem.innerHTML = `
+            <div class="lc-category-img-box">
+                <img src="${imgUrl}" alt="${escapeHtml(cat.nombre_categoria)}">
+            </div>
+            <span>${escapeHtml(cat.nombre_categoria)}</span>
+        `;
+        categoriesContainer.appendChild(catItem);
+    });
+
+    // ─── 3. CARGA DE PRODUCTOS Y SECCIONES (Lógica original de Le Crème) ───
+    const productsContainer = document.getElementById('lc-products-sections');
+    if (!productsContainer) return;
+    productsContainer.innerHTML = '';
+
+    // Obtener los productos del catálogo
+    const { data: productos, error: prodError } = await sb
+        .from('productos')
+        .select('*')
+        .order('nombre_producto', { ascending: true });
+
+    if (prodError) {
+        console.error("Error al cargar productos:", prodError);
+        return;
+    }
+
+    // Mapear los productos al caché local para acceso rápido del modal
+    productos.forEach(p => {
+        productosCache[p.id_producto] = p;
+    });
+
+    // Crear un bloque de sección por cada categoría existente
+    categorias.forEach(cat => {
+        const section = document.createElement('div');
+        section.className = 'lc-products-section';
+        section.id = `section-cat-${cat.id_categoria}`;
+
+        const title = document.createElement('h3');
+        title.className = 'lc-section-title';
+        title.innerText = cat.nombre_categoria;
+        section.appendChild(title);
+
+        const listContainer = document.createElement('div');
+        listContainer.className = 'lc-products-list';
+
+        // Filtrar y adjuntar los productos que pertenecen a esta categoría específica
+        const productosDeEstaCat = productos.filter(p => p.id_categoria === cat.id_categoria);
+
+        if (productosDeEstaCat.length === 0) {
+            const noProd = document.createElement('p');
+            noProd.style.cssText = 'padding:10px 15px; color:#999; font-size:0.85rem; font-style:italic;';
+            noProd.innerText = 'Próximamente más delicias...';
+            listContainer.appendChild(noProd);
+        } else {
+            productosDeEstaCat.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'lc-product-item';
+
+                const pImg = p.imagen_url || LOGO_URL;
+                const precioMostrar = p.precio_base > 0 ? `$${formatearPrecio(p.precio_base)}` : 'Personalizado';
+
+                item.innerHTML = `
+                    <img src="${pImg}" class="lc-product-img" alt="${escapeHtml(p.nombre_producto)}">
+                    <div class="lc-product-info">
+                        <h4>${escapeHtml(p.nombre_producto)}</h4>
+                        <p>${escapeHtml(p.descripcion || '')}</p>
+                        <div class="lc-product-price-row">
+                            <span class="lc-price">${precioMostrar}</span>
+                            <button type="button" class="lc-btn-add" onclick="abrirModalProducto(${p.id_producto})">Agregar</button>
+                        </div>
+                    </div>
+                `;
+                listContainer.appendChild(item);
             });
         }
-    } catch (err) {
-        console.error('Error cargando la página:', err);
-        listaCategorias.innerHTML = '<p style="padding:10px; color:#c0392b;">No se pudo conectar con la base de datos. Revisa config.js.</p>';
+
+        section.appendChild(listContainer);
+        productsContainer.appendChild(section);
+    });
+
+    // Seleccionar por defecto la primera sección al terminar la carga
+    if (categorias.length > 0) {
+        seleccionarCategoriaMenu(categorias[0].id_categoria);
     }
 }
 
