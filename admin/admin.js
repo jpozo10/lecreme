@@ -287,10 +287,12 @@ function renderizarProductosPorCategoria() {
         return `
             <div class="bloque-categoria-prod" data-cat-id="${cat.id_categoria}">
                 <h4 class="adm-cat-title">📁 ${escapeHtml(cat.nombre)}</h4>
-                <table class="adm-table-v2">
-                    <thead><tr><th>Miniatura</th><th>Producto</th><th>Precio Base</th><th>Estado</th><th>Acciones</th></tr></thead>
-                    <tbody>${filas}</tbody>
-                </table>
+                <div class="adm-table-scroll">
+                    <table class="adm-table-v2">
+                        <thead><tr><th>Miniatura</th><th>Producto</th><th>Precio Base</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody>${filas}</tbody>
+                    </table>
+                </div>
             </div>
         `;
     }).join('') || '<p style="text-align:center; color:#888;">Crea primero una categoría.</p>';
