@@ -48,6 +48,12 @@ html, body {
   font-size: 0.85rem;
   color: var(--adm-brown-light);
 }
+#adm-user-email {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .adm-btn-logout {
   background: #fff;
   border: 1.5px solid var(--adm-pink);
@@ -103,7 +109,8 @@ html, body {
 .adm-main-content {
   flex-grow: 1;
   padding: 24px 28px;
-  overflow-x: hidden;
+  overflow-x: visible;
+  max-width: 100%;
 }
 
 .adm-panel-section { display: none; }
@@ -147,6 +154,17 @@ html, body {
 .adm-btn-danger:hover { background: #c0392b; }
 
 /* ---------- TABLAS ---------- */
+.adm-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 10px;
+  border-radius: 12px;
+}
+.adm-table-scroll .adm-table-v2 {
+  margin-bottom: 0;
+}
+
 .adm-table-v2 {
   width: 100%;
   border-collapse: collapse;
@@ -166,6 +184,7 @@ html, body {
   color: var(--adm-brown);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 .adm-table-v2 td {
   padding: 10px 14px;
@@ -173,6 +192,7 @@ html, body {
   font-size: 0.88rem;
   color: #444;
   vertical-align: middle;
+  white-space: nowrap;
 }
 .adm-table-v2 td button { margin-right: 6px; }
 
@@ -446,9 +466,36 @@ html, body {
     width: 100%;
     flex-direction: row;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border-right: none;
     border-bottom: 1px solid var(--adm-border);
   }
   .adm-sidebar h2 { display: none; }
   .adm-side-btn { white-space: nowrap; }
+}
+
+@media (max-width: 480px) {
+  .adm-topbar { padding: 10px 14px; }
+  .adm-topbar-title { font-size: 0.95rem; }
+  .adm-main-content { padding: 16px 14px; }
+
+  .adm-section-header { flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+  .adm-section-header h3 { font-size: 1rem; }
+
+  .adm-filter-group { flex-wrap: wrap; align-items: flex-start; }
+  .adm-filter-group select { max-width: 100% !important; width: 100%; }
+
+  .adm-table-v2 th, .adm-table-v2 td { padding: 8px 10px; font-size: 0.8rem; }
+  .adm-thumb { width: 34px; height: 34px; }
+
+  .adm-modal-content-v2 { width: 95%; max-height: 92vh; }
+  .adm-modal-header { padding: 14px 16px; }
+  .adm-form-group { padding: 0 14px; margin-top: 12px; }
+  .adm-btn-guardar-wrapper { padding: 16px 14px 0 14px; }
+
+  .tamanio-row-dinamica { flex-wrap: wrap; }
+  .tamanio-row-dinamica select { flex: 1 1 100%; }
+  .tamanio-row-dinamica input { flex: 1; width: auto; }
+
+  .item-chk-prod { font-size: 0.8rem; padding: 7px 6px; }
 }
