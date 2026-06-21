@@ -93,16 +93,7 @@
         <span class="lc-modal-close" onclick="cerrarModalPropina()">&times;</span>
       </div>
       <div class="lc-modal-body">
-        <div style="display:flex; gap:8px;">
-          <button type="button" id="lc-tip-btn-si" onclick="responderPropina(true)"
-            style="flex:1; padding:8px 0; border:1.5px solid #D67280; border-radius:20px; background:#fff; color:#9C5F5A; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
-            Sí 🙌</button>
-          <button type="button" id="lc-tip-btn-no" onclick="responderPropina(false)"
-            style="flex:1; padding:8px 0; border:1.5px solid #D67280; border-radius:20px; background:#fff; color:#9C5F5A; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s;">
-            No, gracias</button>
-        </div>
-
-        <div id="lc-tip-detail" style="display:none; margin-top:14px;">
+        <div id="lc-tip-detail" style="margin-top:4px;">
           <p style="margin:0 0 6px 0; font-size:0.85rem; color:#9C5F5A; font-weight:600;">Tipo de propina:</p>
           <div style="display:flex; gap:8px; margin-bottom:10px;">
             <button type="button" id="lc-tip-tipo-pct" onclick="seleccionarTipoPropina('porcentaje')"
