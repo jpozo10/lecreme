@@ -335,11 +335,12 @@ async function abrirModal(idProducto) {
     }
 
     try {
-        // --- Tamaños del producto ---
+        // --- Tamaños del producto (ordenados de más barato a más caro) ---
         const { data: tamanios, error: errTam } = await sb
             .from('producto_tamanios')
             .select('id_tamanio, precio, tamanios(nombre)')
-            .eq('id_producto', idProducto);
+            .eq('id_producto', idProducto)
+            .order('precio', { ascending: true });
         if (errTam) throw errTam;
 
         const selectTam = document.getElementById('lc-product-tamanio');
@@ -494,13 +495,13 @@ async function confirmarAgregado() {
             const { data: itemActual } = await sb.from('carrito_items').select('cantidad').eq('id', idExistente).single();
             await sb.from('carrito_items').update({ cantidad: (itemActual ? itemActual.cantidad : 1) + 1 }).eq('id', idExistente);
         } else {
-            // CORRECCIÓN AQUÍ: Se añade "id_combo: null" para evitar conflictos de restricciones en la base de datos
+            // Se añade "id_combo: null" para evitar conflictos con la restricción de la base de datos
             const { data: nuevoItem, error } = await sb
                 .from('carrito_items')
                 .insert({
                     session_id: sessionId,
                     id_producto: idProductoSeleccionado,
-                    id_combo: null, 
+                    id_combo: null,
                     id_tamanio: idTamanio,
                     cantidad: 1,
                     precio_unitario: precioUnitario,
@@ -662,9 +663,6 @@ async function actualizarContadorYDatosCarrito() {
     }
 }
 
-// ─────────────────────────────────────────────────────────
-//  PROPINA (modal independiente) — lógica sin cambios, es pura UI/matemática
-// ─────────────────────────────────────────────────────────
 
 function abrirModalPropina() {
     var modal = document.getElementById('lc-tip-modal');
@@ -689,39 +687,9 @@ function guardarPropina() {
 }
 
 function _resetearPropina() {
-    var btnSi = document.getElementById('lc-tip-btn-si');
-    var btnNo = document.getElementById('lc-tip-btn-no');
-    var detalle = document.getElementById('lc-tip-detail');
-    if (btnSi) { btnSi.style.background = '#fff'; btnSi.style.color = '#9C5F5A'; btnSi.style.borderColor = '#D67280'; }
-    if (btnNo) { btnNo.style.background = '#fff'; btnNo.style.color = '#9C5F5A'; btnNo.style.borderColor = '#D67280'; }
-    if (detalle) detalle.style.display = 'none';
     var inputValor = document.getElementById('lc-tip-input-valor');
     if (inputValor) inputValor.value = '';
     _seleccionarTipoPropina('porcentaje', false);
-}
-
-function responderPropina(quiere) {
-    var btnSi = document.getElementById('lc-tip-btn-si');
-    var btnNo = document.getElementById('lc-tip-btn-no');
-    var detalle = document.getElementById('lc-tip-detail');
-
-    var estiloActivo = { background: '#D67280', color: '#fff', borderColor: '#D67280' };
-    var estiloInactivo = { background: '#fff', color: '#9C5F5A', borderColor: '#D67280' };
-
-    if (quiere) {
-        _aplicarEstilo(btnSi, estiloActivo);
-        _aplicarEstilo(btnNo, estiloInactivo);
-        if (detalle) detalle.style.display = 'block';
-    } else {
-        _aplicarEstilo(btnNo, estiloActivo);
-        _aplicarEstilo(btnSi, estiloInactivo);
-        if (detalle) detalle.style.display = 'none';
-        var inputValor = document.getElementById('lc-tip-input-valor');
-        if (inputValor) inputValor.value = '';
-    }
-
-    var subtotal = _obtenerSubtotal();
-    actualizarTotalConPropina(subtotal);
 }
 
 function _aplicarEstilo(el, estilos) {
@@ -796,13 +764,7 @@ function actualizarPropina() {
 }
 
 function actualizarTotalConPropina(subtotal) {
-    var montoPropina = 0;
-    var detalle = document.getElementById('lc-tip-detail');
-
-    if (detalle && detalle.style.display === 'block') {
-        montoPropina = _calcularMontoPropina(subtotal);
-    }
-
+    var montoPropina = _calcularMontoPropina(subtotal);
     var totalFinal = subtotal + montoPropina;
 
     var labelPropina = document.getElementById('lc-tip-monto-label');
@@ -892,11 +854,7 @@ async function procesarPedidoWhatsApp() {
     }
 
     var subtotal = _obtenerSubtotal();
-    var montoPropina = 0;
-    var detalle = document.getElementById('lc-tip-detail');
-    if (detalle && detalle.style.display === 'block') {
-        montoPropina = _calcularMontoPropina(subtotal);
-    }
+    var montoPropina = _calcularMontoPropina(subtotal);
 
     var mensaje = '¡Hola Le Crème! 🧁 Confirmar pedido:\n\n';
     document.querySelectorAll('.lc-cart-item-card').forEach(function (item) {
