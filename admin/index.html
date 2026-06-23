@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Le Creme — Admin V1</title>
+  <title>Le Creme — Admin</title>
   <link rel="stylesheet" href="/lecreme/admin/admin.css">
 
   <link rel="icon" type="image/png" sizes="16x16" href="https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/favicon-16x16.png">
@@ -13,7 +13,7 @@
 <body>
 
   <div class="adm-topbar">
-    <div class="adm-topbar-title">Le Creme — Admin </div>
+    <div class="adm-topbar-title">🧁 Le Creme — Admin</div>
     <div class="adm-topbar-right">
       <span id="adm-user-email"></span>
       <button type="button" class="adm-btn-logout" id="btn-logout">Cerrar sesión</button>
@@ -256,7 +256,6 @@
         <div class="adm-img-preview-box"><img src="https://i.imgur.com/LohlUtN.png"></div>
       </div>
 
-
       <div class="adm-form-group">
         <label>Visibilidad:</label>
         <select id="form-prod-activo" class="adm-form-control">
@@ -309,6 +308,12 @@
         </select>
       </div>
 
+      <!-- NUEVO: cantidad exacta de selecciones a pedir al cliente -->
+      <div class="adm-form-group">
+        <label>Cantidad de opciones a seleccionar (combo):</label>
+        <input type="number" id="combo-cantidad-opciones" class="adm-form-control" min="1" value="1">
+      </div>
+
       <div class="adm-form-group">
         <label>Lista de opciones (separadas por comas):</label>
         <input type="text" id="item-lista-opciones" class="adm-form-control" placeholder="Ej: Fresa, Mora, Maracuyá">
@@ -318,7 +323,6 @@
         <label>Descripción del Combo:</label>
         <input type="text" id="form-combo-desc" class="adm-form-control" placeholder="Ej: Lleva 2 porciones + 1 bebida...">
       </div>
-
 
       <div class="adm-form-group">
         <label>Origen Imagen del Combo:</label>
@@ -407,9 +411,8 @@
 
   <!-- Librería oficial de Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <!-- Configuración compartida con la tienda (raíz del repo) -->
   <script src="/lecreme/config.js"></script>
-  <!-- Lógica del panel -->
   <script src="admin.js" defer></script>
 </body>
 </html>
+
