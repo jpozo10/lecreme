@@ -129,14 +129,28 @@
       <h3>Mi Carrito</h3>
       <span class="lc-cart-sidebar-close" onclick="cerrarPanelCarrito()">&times;</span>
     </div>
-    <div class="lc-cart-sidebar-body" id="lc-cart-items-container"></div>
-    <div class="lc-cart-options">
+    <div class="lc-cart-sidebar-body">
+      <div id="lc-cart-items-container"></div>
+      <div class="lc-cart-options">
       <label class="lc-option-label">Método de Entrega:</label>
-      <select id="lc-cart-entrega" class="lc-cart-select" onchange="actualizarContadorYDatosCarrito()">
+      <select id="lc-cart-entrega" class="lc-cart-select" onchange="onCambioEntrega()">
         <option value="Domicilio">📍 Domicilio</option>
         <option value="Retiro">🏪 Retiro en Tienda</option>
       </select>
-      <input type="text" id="lc-cart-direccion" class="lc-cart-select" placeholder="Escribe tu dirección aquí..." style="margin-top:10px;">
+
+      <div id="lc-cart-datos-cliente" style="margin-top:10px;">
+        <label class="lc-option-label">Nombre Completo:</label>
+        <input type="text" id="lc-cart-nombre" class="lc-cart-select" placeholder="Escribe tu nombre aqui" style="margin-top:6px;">
+
+        <label class="lc-option-label" id="lc-label-barrio" style="margin-top:10px;">Barrio:</label>
+        <input type="text" id="lc-cart-barrio" class="lc-cart-select" placeholder="Escribe tu barrio aqui" style="margin-top:6px;">
+
+        <label class="lc-option-label" id="lc-label-direccion" style="margin-top:10px;">Dirección:</label>
+        <input type="text" id="lc-cart-direccion" class="lc-cart-select" placeholder="Escribe tu dirección aquí..." style="margin-top:6px;">
+
+        <label class="lc-option-label" style="margin-top:10px;">Número de Celular:</label>
+        <input type="text" id="lc-cart-celular" class="lc-cart-select" placeholder="Escribe tu número de Celular aqui..." style="margin-top:6px;">
+      </div>
 
       <label class="lc-option-label" style="margin-top: 10px;">Método de Pago:</label>
       <select id="lc-cart-pago" class="lc-cart-select">
@@ -166,7 +180,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <!-- Tu configuración de proyecto (URL + anon key) -->
   <script src="config.js"></script>
-
+  <!-- Lógica de la tienda -->
   <script src="app.js" defer></script>
 </body>
 </html>
