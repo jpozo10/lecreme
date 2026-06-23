@@ -788,18 +788,34 @@ async function guardarCombo() {
     const descuento = Number(document.getElementById('form-combo-descuento').value) || 0;
     const descripcion = document.getElementById('form-combo-desc').value.trim();
     const activo = document.getElementById('form-combo-activo').value;
+
+    // Importante: el value real de la URL pública debe estar en el input .input-ruta-real
+    // (la subida ocurre en el listener global de change). Si el usuario subió archivo, ahí quedará la URL.
     const imagen = obtenerImagenFinal('modal-combo');
 
     const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S' ? true : false;
     const lista_opciones = document.getElementById('item-lista-opciones')?.value?.trim() || null;
+
+    // Nuevo: cantidad exacta de selecciones que debe hacer el cliente
+    const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
+    const cantidad_opciones = cantidad_opciones_el ? Math.max(1, parseInt(cantidad_opciones_el.value, 10) || 1) : 1;
 
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
     if (!nombre) { admToast('El nombre del combo es obligatorio.', 'error'); return; }
     if (productosSeleccionados.length === 0) { admToast('Selecciona al menos un producto para el combo.', 'error'); return; }
 
-    const payload = { nombre, precio_normal: normal, precio_descuento: descuento, descripcion, activo, imagen: imagen || null, requiere_opciones, lista_opciones };
-
+    const payload = {
+        nombre,
+        precio_normal: normal,
+        precio_descuento: descuento,
+        descripcion,
+        activo,
+        imagen: imagen || null,
+        requiere_opciones,
+        lista_opciones,
+        cantidad_opciones
+    };
 
     try {
         let idCombo = id;
