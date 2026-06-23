@@ -301,16 +301,26 @@ function limpiarUIGranizadosEnModal() {
 }
 
 function setModoModalParaCombo(combo) {
+    idProductoSeleccionado = null;
+
     const modalTitle = document.getElementById('modal-product-name');
     if (modalTitle) modalTitle.innerText = combo.nombre;
 
-    // Ocultar selección de tamaños (combo => precio único)
-    const selectTam = document.getElementById('lc-product-tamanio');
-    const modalTamContainer = selectTam?.closest('#modal-tamanio-container') || null;
-    if (modalTamContainer) modalTamContainer.style.display = 'none';
-    if (selectTam) selectTam.value = '';
+    const modalImg = document.getElementById('modal-product-img');
+    if (modalImg) modalImg.src = combo.imagen || LOGO_URL;
 
-    // Limpieza general
+    // 1. Ocultar el contenedor de tamaños
+    const modalTamContainer = document.getElementById('modal-tamanio-container');
+    if (modalTamContainer) {
+        modalTamContainer.style.setProperty('display', 'none', 'important');
+    }
+
+    const selectTam = document.getElementById('lc-product-tamanio');
+    if (selectTam) {
+        selectTam.innerHTML = `<option value="" data-precio="${combo.precio_descuento}">Combo</option>`;
+    }
+
+    // 2. Resetear notas
     const txtNotas = document.getElementById('modal-observaciones');
     if (txtNotas) {
         txtNotas.value = '';
@@ -319,56 +329,51 @@ function setModoModalParaCombo(combo) {
 
     const containerToppings = document.getElementById('modal-toppings-container');
     const tituloToppings = document.getElementById('titulo-toppings');
+    const toppingsBlock = document.getElementById('lc-toppings-wrapper-block');
+
     if (containerToppings) containerToppings.innerHTML = '';
 
-    // Validar si el combo requiere selección dinámica
     const requiereOpciones = !!(combo?.requiere_opciones === true || combo?.requiere_opciones === 'Y' || combo?.requiere_opciones === 'S');
-    const listaOpciones = (combo?.lista_opciones || '')
-        .split(',')
-        .map(x => String(x).trim())
-        .filter(Boolean);
-
-    // cantidad_opciones (mínimo 1 por diseño)
+    const listaOpciones = (combo?.lista_opciones || '').split(',').map(x => String(x).trim()).filter(Boolean);
     const cantidadOpciones = Math.max(1, parseInt(combo?.cantidad_opciones, 10) || 1);
 
-    // Render dinámico de selects por cantidad real
+    // 3. Mostrar y renderizar opciones dinámicas
     if (requiereOpciones && containerToppings && listaOpciones.length > 0) {
+        if (toppingsBlock) toppingsBlock.style.setProperty('display', 'block', 'important');
         if (tituloToppings) {
-            tituloToppings.style.display = 'block';
+            tituloToppings.style.setProperty('display', 'block', 'important');
             tituloToppings.innerText = `Elige tus opciones para ${combo.nombre}:`;
         }
 
         let html = '';
         for (let i = 1; i <= cantidadOpciones; i++) {
             html += `
-                <div style="margin-top:10px;">
-                    <label style="font-weight:700; color:#6D3B37; font-size:0.9rem;">Opción ${i}</label>
-                    <select class="lc-combo-opciones-select" data-pos="${i}" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px;">
-                        <option value="">-- Selecciona --</option>
-                        ${listaOpciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
-                    </select>
-                </div>
-            `;
+<div style="margin-top:10px; width:100%;">
+    <label style="font-weight:700; color:#6D3B37; font-size:0.9rem; display:block;">Opción ${i}</label>
+    <select class="lc-combo-opciones-select" data-pos="${i}" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px; display:block !important;">
+        <option value="">-- Selecciona un sabor --</option>
+        ${listaOpciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+    </select>
+</div>`;
         }
 
         containerToppings.innerHTML = html;
-
         comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO_DYNAMIC', cantidad: cantidadOpciones };
     } else {
-        if (tituloToppings) tituloToppings.style.display = 'none';
+        if (toppingsBlock) toppingsBlock.style.setProperty('display', 'none', 'important');
+        if (tituloToppings) tituloToppings.style.setProperty('display', 'none', 'important');
         comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO3', cantidad: 0 };
     }
+
+    // 4. Setear precio definitivo
+    const txtTotal = document.getElementById('modal-total-price');
+    if (txtTotal) txtTotal.innerText = `$${formatearPrecio(combo.precio_descuento)}`;
 }
 
 
-function getSeleccionesGranizadosDelModal() {
-    const selects = document.querySelectorAll('#modal-toppings-container select.lc-granizado-select');
-    const valores = [];
-    selects.forEach(sel => {
-        valores.push(sel.value || '');
-    });
-    return valores.map(v => String(v).trim()).filter(Boolean);
-}
+
+
+
 
 async function guardarComboConGranizadosEnCarrito() {
     if (!comboSeleccionadoGranizados) return;
@@ -460,9 +465,10 @@ async function agregarComboAlCarrito(idCombo) {
     const combo = combosCache[idCombo];
     if (!combo) return;
 
+    // Reset antes de render
     comboSeleccionadoGranizados = null;
 
-    // Abrimos el modal de toppings/observaciones para mostrar la UI de granizados
+    // Render blindado del modal (combo) y abrir modal
     setModoModalParaCombo(combo);
 
     const modal = document.getElementById('lc-topping-modal');
@@ -471,6 +477,7 @@ async function agregarComboAlCarrito(idCombo) {
         modal.classList.add('active');
     }
 }
+
 
 
 // ─────────────────────────────────────────────────────────
@@ -519,9 +526,13 @@ function evaluarVisibilidadToppings() {
 }
 
 async function abrirModal(idProducto) {
+    // Esta función se usa para productos.
+    // Para combos, abrimos el mismo modal reutilizando lc-topping-modal,
+    // por eso aquí limpiamos el selector dinámico si corresponde.
     idProductoSeleccionado = idProducto;
     const prod = productosCache[idProducto];
     if (!prod) { console.error('Producto no encontrado en caché:', idProducto); return; }
+
 
     const cat = categoriasConfig[prod.id_categoria];
     const llevaToppings = cat ? cat.lleva_toppings : 'N';
@@ -661,6 +672,16 @@ function alternarCheckbox(idTopping) {
 }
 
 function calcularTotal() {
+    // Blindaje: si el modal está en modo combo, NO ejecutar la lógica de productos.
+    if (comboSeleccionadoGranizados && comboSeleccionadoGranizados.idCombo) {
+        const combo = combosCache[comboSeleccionadoGranizados.idCombo];
+        if (combo) {
+            const totalElem = document.getElementById('modal-total-price');
+            if (totalElem) totalElem.innerText = '$' + formatearPrecio(combo.precio_descuento);
+        }
+        return;
+    }
+
     let selectTamanio = document.getElementById('lc-product-tamanio');
     let precioTamanio = 0;
 
@@ -684,12 +705,14 @@ function calcularTotal() {
     }
 }
 
+
 async function confirmarAgregado() {
-    // Si estamos en modo combo granizados, delega aquí.
-    if (comboSeleccionadoGranizados) {
+    // Control central: si el modal está en modo combo, NO ejecutar flujo de producto.
+    if (comboSeleccionadoGranizados && comboSeleccionadoGranizados.idCombo) {
         await guardarComboConGranizadosEnCarrito();
         return;
     }
+
 
     const txtNotas = document.getElementById('modal-observaciones');
     const selectTam = document.getElementById('lc-product-tamanio');
