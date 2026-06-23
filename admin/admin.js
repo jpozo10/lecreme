@@ -1,8 +1,3 @@
-// ============================================================
-//  LE CRÈME — admin.js
-//  Panel de administración migrado de Oracle APEX a Supabase.
-//  Usa el cliente global `sb` definido en ../config.js
-// ============================================================
 
 const BUCKET_NAME = 'Menu';
 const FALLBACK_IMG = 'https://i.imgur.com/LohlUtN.png';
