@@ -447,7 +447,7 @@ async function insertarComboEnCarrito(idCombo, observaciones) {
                 cantidad: 1,
                 precio_unitario: Number(combo.precio_descuento),
                 observaciones: observaciones || null
-            });
+            }).select('id').single();
             if (error) throw error;
         }
 
