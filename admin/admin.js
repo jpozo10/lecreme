@@ -381,6 +381,12 @@ function abrirModalNuevoProducto() {
     document.getElementById('form-prod-descripcion').value = '';
     document.getElementById('form-prod-activo').value = 'S';
     document.getElementById('form-prod-img').value = '';
+
+    const requiereEl = document.getElementById('item-requiere-opciones');
+    if (requiereEl) requiereEl.value = 'N';
+    const listaEl = document.getElementById('item-lista-opciones');
+    if (listaEl) listaEl.value = '';
+
     renderizarSelectCategoriasEnProducto();
     limpiarFilasTamanio();
     renderizarToppingsEnProducto([]);
@@ -403,6 +409,12 @@ async function abrirModalEditarProducto(id) {
     renderizarSelectCategoriasEnProducto();
     document.getElementById('form-prod-cat').value = prod.id_categoria;
 
+    // Opciones dinámicas (requiere_opciones, lista_opciones)
+    const requiereEl = document.getElementById('item-requiere-opciones');
+    if (requiereEl) requiereEl.value = prod.requiere_opciones ? 'S' : 'N';
+    const listaEl = document.getElementById('item-lista-opciones');
+    if (listaEl) listaEl.value = prod.lista_opciones || '';
+
     m.classList.add('active');
     inicializarPestanasImagen(m);
     actualizarVistaPrevia(m, prod.imagen || '');
@@ -419,13 +431,19 @@ async function guardarProducto() {
     const activo = document.getElementById('form-prod-activo').value;
     const descripcion = document.getElementById('form-prod-descripcion').value.trim();
     const imagen = obtenerImagenFinal('modal-producto');
+
+    const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S' ? true : false;
+    const lista_opciones = document.getElementById('item-lista-opciones')?.value?.trim() || null;
+
     const tamanios = serializarTamanios();
     const toppingsSeleccionados = Array.from(document.querySelectorAll('.chk-prod-topping:checked')).map(c => parseInt(c.value, 10));
+
 
     if (!nombre) { admToast('El nombre del producto es obligatorio.', 'error'); return; }
     if (!categoria) { admToast('Selecciona una categoría.', 'error'); return; }
 
-    const payload = { nombre, precio, id_categoria: categoria, activo, descripcion, imagen: imagen || null };
+    const payload = { nombre, precio, id_categoria: categoria, activo, descripcion, imagen: imagen || null, requiere_opciones, lista_opciones };
+
 
     try {
         let idProducto = id;
@@ -720,11 +738,18 @@ function abrirModalNuevoCombo() {
     document.getElementById('form-combo-activo').value = 'S';
     document.getElementById('form-combo-img').value = '';
     document.getElementById('buscar-prod-combo').value = '';
+
+    const requiereEl = document.getElementById('item-requiere-opciones');
+    if (requiereEl) requiereEl.value = 'N';
+    const listaEl = document.getElementById('item-lista-opciones');
+    if (listaEl) listaEl.value = '';
+
     renderizarListaProductosCombo([]);
     m.classList.add('active');
     inicializarPestanasImagen(m);
     actualizarVistaPrevia(m, '');
 }
+
 
 async function abrirModalEditarCombo(id) {
     const combo = combosCache[id];
@@ -740,6 +765,12 @@ async function abrirModalEditarCombo(id) {
     document.getElementById('form-combo-img').value = combo.imagen || '';
     document.getElementById('buscar-prod-combo').value = '';
 
+    // Opciones dinámicas (requiere_opciones, lista_opciones)
+    const requiereEl = document.getElementById('item-requiere-opciones');
+    if (requiereEl) requiereEl.value = combo.requiere_opciones ? 'S' : 'N';
+    const listaEl = document.getElementById('item-lista-opciones');
+    if (listaEl) listaEl.value = combo.lista_opciones || '';
+
     const { data: relaciones } = await sb.from('combo_productos').select('id_producto').eq('id_combo', id);
     const idsSeleccionados = (relaciones || []).map(r => r.id_producto);
     renderizarListaProductosCombo(idsSeleccionados);
@@ -749,6 +780,7 @@ async function abrirModalEditarCombo(id) {
     actualizarVistaPrevia(m, combo.imagen || '');
 }
 
+
 async function guardarCombo() {
     const id = parseInt(document.getElementById('form-combo-id').value, 10);
     const nombre = document.getElementById('form-combo-nombre').value.trim();
@@ -757,12 +789,17 @@ async function guardarCombo() {
     const descripcion = document.getElementById('form-combo-desc').value.trim();
     const activo = document.getElementById('form-combo-activo').value;
     const imagen = obtenerImagenFinal('modal-combo');
+
+    const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S' ? true : false;
+    const lista_opciones = document.getElementById('item-lista-opciones')?.value?.trim() || null;
+
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
     if (!nombre) { admToast('El nombre del combo es obligatorio.', 'error'); return; }
     if (productosSeleccionados.length === 0) { admToast('Selecciona al menos un producto para el combo.', 'error'); return; }
 
-    const payload = { nombre, precio_normal: normal, precio_descuento: descuento, descripcion, activo, imagen: imagen || null };
+    const payload = { nombre, precio_normal: normal, precio_descuento: descuento, descripcion, activo, imagen: imagen || null, requiere_opciones, lista_opciones };
+
 
     try {
         let idCombo = id;
