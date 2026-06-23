@@ -111,7 +111,8 @@ async function renderizarPagina() {
                 .select('*')
                 .eq('id_categoria', cat.id_categoria)
                 .eq('activo', 'S')
-                .order('nombre', { ascending: true });
+                .order('orden_mostrar', { ascending: true })
+                .order('id_producto', { ascending: true });
 
             if (errProd) { console.error('Error cargando productos:', errProd); continue; }
 
@@ -841,49 +842,159 @@ async function alterarCantidad(idCarritoItem, accion) {
 //  WHATSAPP
 // ─────────────────────────────────────────────────────────
 
+function onCambioEntrega() {
+    // Si se elige retiro, ocultamos datos de domicilio/barrio/dirección
+    var entrega = document.getElementById('lc-cart-entrega')?.value;
+    var datosCliente = document.getElementById('lc-cart-datos-cliente');
+    var labelBarrio = document.getElementById('lc-label-barrio');
+    var labelDireccion = document.getElementById('lc-label-direccion');
+
+    var barrioInput = document.getElementById('lc-cart-barrio');
+    var direccionInput = document.getElementById('lc-cart-direccion');
+    var celularInput = document.getElementById('lc-cart-celular');
+
+    if (!datosCliente) return;
+
+    var esDomicilio = entrega === 'Domicilio';
+
+    // Nombre y celular SIEMPRE
+    if (celularInput) celularInput.style.display = 'block';
+
+    // Datos domicilio solo en Domicilio
+    if (barrioInput) barrioInput.style.display = esDomicilio ? 'block' : 'none';
+    if (direccionInput) direccionInput.style.display = esDomicilio ? 'block' : 'none';
+    if (labelBarrio) labelBarrio.style.display = esDomicilio ? 'block' : 'none';
+    if (labelDireccion) labelDireccion.style.display = esDomicilio ? 'block' : 'none';
+
+    // No guardamos nada aquí; solo validación/WhatsApp usa los inputs.
+}
+
 async function procesarPedidoWhatsApp() {
     var entrega = document.getElementById('lc-cart-entrega').value;
-    var direccion = document.getElementById('lc-cart-direccion').value;
     var pago = document.getElementById('lc-cart-pago').value;
     var totalText = document.getElementById('lc-cart-grand-total').innerText;
 
-    if (entrega === 'Domicilio' && direccion.trim() === '') {
-        alert('⚠️ Por favor, ingresa tu dirección para el domicilio.');
-        document.getElementById('lc-cart-direccion').focus();
+    var nombre = document.getElementById('lc-cart-nombre').value;
+    var barrio = document.getElementById('lc-cart-barrio')?.value || '';
+    var direccion = document.getElementById('lc-cart-direccion')?.value || '';
+    var celular = document.getElementById('lc-cart-celular')?.value || '';
+
+    if (!nombre.trim()) {
+        alert('⚠️ Por favor ingresa tu Nombre Completo.');
+        document.getElementById('lc-cart-nombre').focus();
         return;
     }
 
+    if (!celular.trim()) {
+        alert('⚠️ Por favor ingresa tu Número de Celular.');
+        document.getElementById('lc-cart-celular').focus();
+        return;
+    }
+
+    if (entrega === 'Domicilio') {
+        if (!barrio.trim()) {
+            alert('⚠️ Por favor ingresa tu Barrio.');
+            document.getElementById('lc-cart-barrio').focus();
+            return;
+        }
+        if (!direccion.trim()) {
+            alert('⚠️ Por favor ingresa tu Dirección.');
+            document.getElementById('lc-cart-direccion').focus();
+            return;
+        }
+    }
+
+    celular = (celular || '').toString().trim();
     var subtotal = _obtenerSubtotal();
     var montoPropina = _calcularMontoPropina(subtotal);
-
-    var mensaje = '¡Hola Le Crème! 🧁 Confirmar pedido:\n\n';
-    document.querySelectorAll('.lc-cart-item-card').forEach(function (item) {
-        let nombre = item.querySelector('h4').innerText;
-        let detalles = item.querySelector('.lc-cart-item-details').innerText.replace(/\n/g, ' | ');
-        let precio = item.querySelector('span[style*="font-weight:700"]').innerText;
-        mensaje += `▪️ ${nombre}\n   Detalles: ${detalles}\n   Subtotal: ${precio}\n\n`;
-    });
-
-    if (montoPropina > 0) {
-        mensaje += `💝 Propina: $${montoPropina.toLocaleString('es-CO')}\n`;
-    }
-
-    mensaje += '📦 Entrega: ' + entrega;
-    if (entrega === 'Domicilio') {
-        mensaje += '\n📍 Dirección: ' + direccion;
-        mensaje += '\n🛵 Valor domicilio: Por confirmar';
-    }
-    mensaje += '\n💰 Pago: ' + pago;
-    mensaje += '\n💵 Total final: ' + totalText;
+    var totalNumerico = parseInt(totalText.replace(/[^0-9]/g, ''), 10) || 0;
+    var sessionId = obtenerSessionId();
 
     try {
-        const { data: config, error } = await sb
+        // 1. GUARDAR EN LA TABLA DE PEDIDOS Y OBTENER EL CONSECUTIVO
+        const { data: nuevoPedido, error: errPedido } = await sb
+            .from('pedidos')
+            .insert({
+                session_id: sessionId,
+                tipo_entrega: entrega,
+                direccion: entrega === 'Domicilio' ? direccion : null,
+                metodo_pago: pago,
+                total_propina: montoPropina,
+                total_final: totalNumerico,
+                nombre_cliente: nombre,
+                celular: celular,
+                barrio: entrega === 'Domicilio' ? barrio : null
+            })
+            .select('id_pedido')
+            .single();
+
+        if (errPedido || !nuevoPedido) {
+            throw new Error('No se pudo registrar el pedido principal: ' + (errPedido?.message || 'Error desconocido'));
+        }
+
+        const numeroPedido = nuevoPedido.id_pedido; // Este es tu número consecutivo automático
+
+        // 2. LEER ARTÍCULOS DEL CARRITO PARA TRASPASARLOS
+        const { data: itemsCarrito, error: errCarrito } = await sb
+            .from('carrito_items')
+            .select('id_producto, id_combo, id_tamanio, cantidad, precio_unitario, observaciones')
+            .eq('session_id', sessionId);
+
+        if (errCarrito || !itemsCarrito || itemsCarrito.length === 0) {
+            throw new Error('El carrito está vacío o no se pudo leer.');
+        }
+
+        // 3. GUARDAR EL DETALLE DE CADA PRODUCTO/COMBO
+        for (const item of itemsCarrito) {
+            const { error: errDetalle } = await sb
+                .from('pedido_detalle')
+                .insert({
+                    id_pedido: numeroPedido,
+                    id_producto: item.id_producto || null,
+                    id_combo: item.id_combo || null,
+                    id_tamanio: item.id_tamanio || null,
+                    cantidad: item.cantidad,
+                    precio_unitario: item.precio_unitario,
+                    observaciones: item.observaciones
+                });
+
+            if (errDetalle) {
+                console.error('Error insertando detalle:', errDetalle);
+            }
+        }
+
+        // 4. CONSTRUCCIÓN DEL MENSAJE DE WHATSAPP INCLUYENDO EL NÚMERO DE PEDIDO
+        var mensaje = `¡Hola Le Crème! 🧁 *Confirmar Pedido #${numeroPedido}*\n\n`;
+        document.querySelectorAll('.lc-cart-item-card').forEach(function (item) {
+            let nombreProd = item.querySelector('h4').innerText;
+            let detalles = item.querySelector('.lc-cart-item-details').innerText.replace(/\n/g, ' | ');
+            let precio = item.querySelector('span[style*="font-weight:700"]').innerText;
+            mensaje += `▪️ ${nombreProd}\n   Detalles: ${detalles}\n   Subtotal: ${precio}\n\n`;
+        });
+
+        if (montoPropina > 0) {
+            mensaje += `💝 Propina: $${montoPropina.toLocaleString('es-CO')}\n`;
+        }
+
+        mensaje += '📦 Entrega: ' + entrega;
+        mensaje += `\n👤 Nombre Completo: ${nombre}`;
+        mensaje += `\n📱 Celular: ${celular}`;
+        if (entrega === 'Domicilio') {
+            mensaje += `\n📍 Barrio: ${barrio}`;
+            mensaje += '\n📍 Dirección: ' + direccion;
+            mensaje += '\n🛵 Valor domicilio: Por confirmar';
+        }
+        mensaje += '\n💰 Pago: ' + pago;
+        mensaje += '\n💵 *Total final: ' + totalText + '*';
+
+        // 5. ENVIAR A WHATSAPP
+        const { data: config, error: errConfig } = await sb
             .from('lc_configuracion')
             .select('whatsapp_recepcion')
             .eq('id_config_tienda', 1)
             .single();
 
-        if (error || !config) {
+        if (errConfig || !config) {
             alert('No se pudo obtener el número de WhatsApp de la tienda.');
             return;
         }
@@ -891,10 +1002,12 @@ async function procesarPedidoWhatsApp() {
         var numWhatsApp = (config.whatsapp_recepcion || '').replace(/\D/g, '');
         window.open('https://wa.me/' + numWhatsApp + '?text=' + encodeURIComponent(mensaje), '_blank');
 
-        // El pedido ya se envió por WhatsApp: vaciamos el carrito para el próximo pedido
-        await vaciarCarritoTrasPedido();
+        // 6. VACIAR CARRITO EN LA BASE DE DATOS Y FRONT
+        await vaciarCarritoTrasPedido(); 
+        
     } catch (err) {
-        console.error('Error al obtener WhatsApp:', err);
+        console.error('Error general en el proceso de checkout:', err);
+        alert('❌ Error al procesar el pedido: ' + err.message);
     }
 }
 
