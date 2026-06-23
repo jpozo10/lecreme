@@ -441,13 +441,13 @@ async function insertarComboEnCarrito(idCombo, observaciones) {
         } else {
             const { error } = await sb.from('carrito_items').insert({
                 session_id: sessionId,
-                id_producto: null, // Volvemos a dejarlo en null ya que Supabase lo va a permitir
+                id_producto: null,
                 id_combo: idCombo,
                 id_tamanio: null,
                 cantidad: 1,
                 precio_unitario: Number(combo.precio_descuento),
                 observaciones: observaciones || null
-            }).select('id').single();
+            });
             if (error) throw error;
         }
 
@@ -560,7 +560,7 @@ async function abrirModal(idProducto) {
         if (prod?.requiere_opciones === true || prod?.requiere_opciones === 'Y' || prod?.requiere_opciones === 'S') {
             idSeleccionDinamicForModal = { tipo: 'producto', id: idProducto };
             // Renderiza selector en el mismo contenedor que usan toppings
-            renderizarSelectOpcionesDinamicas(prod.lista_opciones || '');
+           // renderizarSelectOpcionesDinamicas(prod.lista_opciones || '');
         } else {
             // Si no requiere opciones, limpia contenedor antes de cargar toppings
             const containerToppings = document.getElementById('modal-toppings-container');
@@ -650,6 +650,13 @@ async function abrirModal(idProducto) {
         evaluarVisibilidadToppings();
         calcularTotal();
 
+        // Pintar el select de bebida (cuando el producto lo requiere)
+        inyectarBebidaDePreferencia(prod);
+
+
+
+
+
         const modal = document.getElementById('lc-topping-modal');
         if (modal) {
             modal.style.display = 'flex';
@@ -718,7 +725,15 @@ async function confirmarAgregado() {
     const selectTam = document.getElementById('lc-product-tamanio');
     const toppingsSeleccionados = [];
 
+    // Validación para bebidas (producto requiere_opciones)
+    const selectBebida = document.getElementById('lc-producto-bebida-select');
+    if (selectBebida && !selectBebida.value) {
+        alert("Por favor, selecciona tu bebida de preferencia.");
+        return;
+    }
+
     // Validar opciones dinámicas para productos (requiere_opciones)
+
     const prod = productosCache[idProductoSeleccionado];
     const requiereOpcionesProd = !!(prod?.requiere_opciones === true || prod?.requiere_opciones === 'Y' || prod?.requiere_opciones === 'S');
     let opcionDinamicaProd = null;
@@ -1313,6 +1328,56 @@ async function vaciarCarritoTrasPedido() {
 // ─────────────────────────────────────────────────────────
 //  BÚSQUEDA DE PRODUCTOS (sin cambios, opera sobre el DOM ya renderizado)
 // ─────────────────────────────────────────────────────────
+
+function inyectarBebidaDePreferencia(prod) {
+    const containerToppings = document.getElementById('modal-toppings-container');
+    const toppingsBlock = document.getElementById('lc-toppings-wrapper-block');
+    const tituloToppings = document.getElementById('titulo-toppings');
+
+    if (!containerToppings || !prod) return;
+
+    // Si el producto requiere opciones y tiene la lista llena
+    if ((prod.requiere_opciones === 'S' || prod.requiere_opciones === 'Y' || prod.requiere_opciones === true) && prod.lista_opciones) {
+        const listaBebidas = prod.lista_opciones
+            .split(',')
+            .map(b => b.trim())
+            .filter(Boolean);
+
+        if (listaBebidas.length > 0) {
+            // Forzamos que el bloque de toppings se muestre (por si la categoría lo tenía oculto)
+            if (toppingsBlock) toppingsBlock.style.setProperty('display', 'block', 'important');
+            if (tituloToppings) {
+                tituloToppings.style.setProperty('display', 'block', 'important');
+                tituloToppings.innerText = 'Opciones del pedido:';
+            }
+
+            // Evitar duplicados: si ya existe el bloque dinámico, lo removemos y lo reinsertamos
+            const bloquePrevio = document.getElementById('lc-bloque-bebida-dinamica');
+            if (bloquePrevio) bloquePrevio.remove();
+
+            // Extra: por seguridad, elimina cualquier select previo con el mismo id (nunca debería haber más de uno)
+            document.querySelectorAll('#lc-producto-bebida-select').forEach(el => el.remove());
+
+            const bBlock = document.createElement('div');
+
+            bBlock.id = 'lc-bloque-bebida-dinamica';
+            bBlock.style.cssText = 'margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e0e0e0; width: 100%; text-align: left;';
+
+            bBlock.innerHTML = `
+                <label style="font-weight:700; color:#6D3B37; font-size:0.9rem; display:block; margin-bottom:6px;">
+                    🥤 Escoge tu bebida de preferencia (Obligatorio):
+                </label>
+                <select id="lc-producto-bebida-select" class="lc-cart-select" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; display:block !important;">
+                    <option value="">-- Selecciona una bebida --</option>
+                    ${listaBebidas.map(bebida => `<option value="${bebida}">${bebida}</option>`).join('')}
+                </select>
+            `;
+
+            // Lo metemos al principio del contenedor de toppings para que salga arriba
+            containerToppings.prepend(bBlock);
+        }
+    }
+}
 
 function filtrarProductosHome() {
     let inputElement = document.getElementById('lc-home-search');
