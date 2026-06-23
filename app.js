@@ -441,7 +441,7 @@ async function insertarComboEnCarrito(idCombo, observaciones) {
         } else {
             const { error } = await sb.from('carrito_items').insert({
                 session_id: sessionId,
-                id_producto: 0,
+                id_producto: null, // Volvemos a dejarlo en null ya que Supabase lo va a permitir
                 id_combo: idCombo,
                 id_tamanio: null,
                 cantidad: 1,
