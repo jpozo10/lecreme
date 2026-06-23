@@ -173,6 +173,9 @@ function crearProductoCard(prod) {
 // ─────────────────────────────────────────────────────────
 
 async function renderizarCombos() {
+    // Nota: los combos "COMBO #1" y "COMBO #2" requieren selección de sabores de granizado.
+    // La UI se reutiliza desde el modal existente de producto (lc-topping-modal).
+
     const wrapper = document.getElementById('lc-combos-wrapper');
     const grid = document.getElementById('lc-combos-grid');
     if (!wrapper || !grid) return;
@@ -228,9 +231,191 @@ function crearComboCard(combo) {
     return div;
 }
 
-async function agregarComboAlCarrito(idCombo) {
+const GRANIZADOS_SABORES_FIJOS = ['Maracuyá', 'Lulo', 'Mora', 'Limón', 'Fresa'];
+
+let comboSeleccionadoGranizados = null; // { idCombo, tipo: 'COMBO1'|'COMBO2'|'COMBO3' }
+
+// Selecciones dinámicas (requiere_opciones / lista_opciones)
+let idSeleccionDinamicForModal = null; // { tipo: 'producto'|'combo', id: number }
+
+function renderizarSelectOpcionesDinamicas(listaOpciones) {
+    const containerToppings = document.getElementById('modal-toppings-container');
+    const tituloToppings = document.getElementById('titulo-toppings');
+
+    if (!containerToppings || !tituloToppings) return;
+
+    const opciones = (listaOpciones || '')
+        .split(',')
+        .map(x => String(x).trim())
+        .filter(Boolean);
+
+    if (opciones.length === 0) {
+        containerToppings.innerHTML = '';
+        tituloToppings.style.display = 'none';
+        return;
+    }
+
+    tituloToppings.style.display = 'block';
+    tituloToppings.innerText = 'Elige una opción:';
+
+    containerToppings.innerHTML = `
+        <div>
+            <select id="lc-opciones-dinamicas" class="lc-opciones-dinamicas" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px;">
+                <option value="">-- Selecciona --</option>
+                ${opciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+            </select>
+        </div>
+    `;
+}
+
+function validarSeleccionOpcionesDinamicas() {
+    const sel = document.getElementById('lc-opciones-dinamicas');
+    if (!sel) return { ok: true, texto: null };
+    const v = String(sel.value || '').trim();
+    if (!v) return { ok: false, texto: null };
+    return { ok: true, texto: v };
+}
+
+function obtenerObservacionesCombinadas(obsBase, obsOpcional) {
+    const a = (obsBase || '').trim();
+    const b = (obsOpcional || '').trim();
+    if (!a && !b) return null;
+    if (a && !b) return a;
+    if (!a && b) return b;
+    return `${a} | ${b}`;
+}
+
+
+function limpiarUIGranizadosEnModal() {
+
+    // Limpia contenedor de toppings y también la sección de observaciones si aplica
+    const containerToppings = document.getElementById('modal-toppings-container');
+    if (containerToppings) containerToppings.innerHTML = '';
+
+    const tituloToppings = document.getElementById('titulo-toppings');
+    if (tituloToppings) tituloToppings.style.display = 'block';
+
+    // Reutilizamos el textarea de notas generales
+    const txtNotas = document.getElementById('modal-observaciones');
+    if (txtNotas) txtNotas.value = '';
+}
+
+function setModoModalParaCombo(combo) {
+    const modalTitle = document.getElementById('modal-product-name');
+    if (modalTitle) modalTitle.innerText = combo.nombre;
+
+    // Ocultar selección de tamaños (combo => precio único)
+    const selectTam = document.getElementById('lc-product-tamanio');
+    const modalTamContainer = selectTam?.closest('#modal-tamanio-container') || null;
+    if (modalTamContainer) modalTamContainer.style.display = 'none';
+    if (selectTam) selectTam.value = '';
+
+    // Limpieza general
+    const txtNotas = document.getElementById('modal-observaciones');
+    if (txtNotas) {
+        txtNotas.value = '';
+        txtNotas.placeholder = 'Observaciones (opcional)...';
+    }
+
+    const containerToppings = document.getElementById('modal-toppings-container');
+    const tituloToppings = document.getElementById('titulo-toppings');
+    if (containerToppings) containerToppings.innerHTML = '';
+
+    // Validar si el combo requiere selección dinámica
+    const requiereOpciones = !!(combo?.requiere_opciones === true || combo?.requiere_opciones === 'Y' || combo?.requiere_opciones === 'S');
+    const listaOpciones = (combo?.lista_opciones || '')
+        .split(',')
+        .map(x => String(x).trim())
+        .filter(Boolean);
+
+    // cantidad_opciones (mínimo 1 por diseño)
+    const cantidadOpciones = Math.max(1, parseInt(combo?.cantidad_opciones, 10) || 1);
+
+    // Render dinámico de selects por cantidad real
+    if (requiereOpciones && containerToppings && listaOpciones.length > 0) {
+        if (tituloToppings) {
+            tituloToppings.style.display = 'block';
+            tituloToppings.innerText = `Elige tus opciones para ${combo.nombre}:`;
+        }
+
+        let html = '';
+        for (let i = 1; i <= cantidadOpciones; i++) {
+            html += `
+                <div style="margin-top:10px;">
+                    <label style="font-weight:700; color:#6D3B37; font-size:0.9rem;">Opción ${i}</label>
+                    <select class="lc-combo-opciones-select" data-pos="${i}" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px;">
+                        <option value="">-- Selecciona --</option>
+                        ${listaOpciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+
+        containerToppings.innerHTML = html;
+
+        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO_DYNAMIC', cantidad: cantidadOpciones };
+    } else {
+        if (tituloToppings) tituloToppings.style.display = 'none';
+        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO3', cantidad: 0 };
+    }
+}
+
+
+function getSeleccionesGranizadosDelModal() {
+    const selects = document.querySelectorAll('#modal-toppings-container select.lc-granizado-select');
+    const valores = [];
+    selects.forEach(sel => {
+        valores.push(sel.value || '');
+    });
+    return valores.map(v => String(v).trim()).filter(Boolean);
+}
+
+async function guardarComboConGranizadosEnCarrito() {
+    if (!comboSeleccionadoGranizados) return;
+    const { idCombo } = comboSeleccionadoGranizados;
     const combo = combosCache[idCombo];
     if (!combo) return;
+
+    // COMBO sin opciones dinámicas
+    if (!combo?.requiere_opciones && comboSeleccionadoGranizados.tipo === 'COMBO3') {
+        const txtNotas = document.getElementById('modal-observaciones');
+        const notasGenerales = txtNotas?.value?.trim() ? txtNotas.value.trim() : '';
+        await insertarComboEnCarrito(idCombo, notasGenerales || null);
+        return;
+    }
+
+    // Validación para combos dinámicos: renderizamos N selects (cantidad_opciones)
+    const cantidadOpciones = Math.max(1, parseInt(combo?.cantidad_opciones, 10) || 1);
+
+    const opcionesSeleccionadas = [];
+    for (let i = 1; i <= cantidadOpciones; i++) {
+        const sel = document.querySelector(`#modal-toppings-container select.lc-combo-opciones-select[data-pos="${i}"]`);
+        const v = sel?.value ? String(sel.value).trim() : '';
+        if (!v) {
+            alert(`Debes seleccionar la opción ${i} para ${combo.nombre}.`);
+            return;
+        }
+        opcionesSeleccionadas.push(v);
+    }
+
+    // Formatear automáticamente en observaciones
+    const obsGran = `Granizados: ${opcionesSeleccionadas.join(', ')}`;
+
+    const txtNotas = document.getElementById('modal-observaciones');
+    const notasGenerales = txtNotas?.value?.trim() ? txtNotas.value.trim() : '';
+
+    const observaciones = notasGenerales
+        ? obtenerObservacionesCombinadas(obsGran, notasGenerales)
+        : obsGran;
+
+    await insertarComboEnCarrito(idCombo, observaciones);
+}
+
+
+async function insertarComboEnCarrito(idCombo, observaciones) {
+    const combo = combosCache[idCombo];
+    if (!combo) return;
+
     const sessionId = obtenerSessionId();
 
     try {
@@ -241,7 +426,10 @@ async function agregarComboAlCarrito(idCombo) {
             .eq('id_combo', idCombo);
         if (errSel) throw errSel;
 
-        if (existentes && existentes.length > 0) {
+        // Si ya existe un combo igual en carrito, no combinamos observaciones.
+        // Por eso, cuando hay observaciones de granizados, agregamos una nueva fila.
+        const requiereDiferenciacion = !!observaciones;
+        if (existentes && existentes.length > 0 && !requiereDiferenciacion) {
             const item = existentes[0];
             const { error } = await sb.from('carrito_items').update({ cantidad: item.cantidad + 1 }).eq('id', item.id);
             if (error) throw error;
@@ -252,18 +440,38 @@ async function agregarComboAlCarrito(idCombo) {
                 id_combo: idCombo,
                 id_tamanio: null,
                 cantidad: 1,
-                precio_unitario: Number(combo.precio_descuento)
+                precio_unitario: Number(combo.precio_descuento),
+                observaciones: observaciones || null
             });
             if (error) throw error;
         }
 
         mostrarMensajeExito('¡Combo agregado al carrito!');
+        cerrarModal();
+        comboSeleccionadoGranizados = null;
         actualizarContadorYDatosCarrito();
     } catch (err) {
         console.error('Error al agregar el combo:', err);
         alert('Hubo un error al agregar el combo al carrito.');
     }
 }
+
+async function agregarComboAlCarrito(idCombo) {
+    const combo = combosCache[idCombo];
+    if (!combo) return;
+
+    comboSeleccionadoGranizados = null;
+
+    // Abrimos el modal de toppings/observaciones para mostrar la UI de granizados
+    setModoModalParaCombo(combo);
+
+    const modal = document.getElementById('lc-topping-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+}
+
 
 // ─────────────────────────────────────────────────────────
 //  NAVEGACIÓN DE CATEGORÍAS (BANNER)
@@ -336,6 +544,20 @@ async function abrirModal(idProducto) {
     }
 
     try {
+        // Opciones dinámicas (requiere_opciones/lista_opciones)
+        idSeleccionDinamicForModal = null;
+        if (prod?.requiere_opciones === true || prod?.requiere_opciones === 'Y' || prod?.requiere_opciones === 'S') {
+            idSeleccionDinamicForModal = { tipo: 'producto', id: idProducto };
+            // Renderiza selector en el mismo contenedor que usan toppings
+            renderizarSelectOpcionesDinamicas(prod.lista_opciones || '');
+        } else {
+            // Si no requiere opciones, limpia contenedor antes de cargar toppings
+            const containerToppings = document.getElementById('modal-toppings-container');
+            const tituloToppings = document.getElementById('titulo-toppings');
+            if (tituloToppings) tituloToppings.style.display = llevaToppings === 'S' ? 'block' : 'none';
+            if (containerToppings && llevaToppings !== 'S') containerToppings.innerHTML = '';
+        }
+
         // --- Tamaños del producto (ordenados de más barato a más caro) ---
         const { data: tamanios, error: errTam } = await sb
             .from('producto_tamanios')
@@ -343,6 +565,7 @@ async function abrirModal(idProducto) {
             .eq('id_producto', idProducto)
             .order('precio', { ascending: true });
         if (errTam) throw errTam;
+
 
         const selectTam = document.getElementById('lc-product-tamanio');
         if (selectTam) {
@@ -377,15 +600,24 @@ async function abrirModal(idProducto) {
         if (errTop) throw errTop;
 
         const containerToppings = document.getElementById('modal-toppings-container');
+        // Si el producto requiere opciones dinámicas, mantenemos el <select> ya renderizado
+        // y SOLO agregamos toppings debajo.
+        const requiereOpcionesProd = !!(prod?.requiere_opciones === true || prod?.requiere_opciones === 'Y' || prod?.requiere_opciones === 'S');
+
         if (containerToppings) {
-            containerToppings.innerHTML = '';
+            const htmlSelectPrevio = document.getElementById('lc-opciones-dinamicas') ? containerToppings.innerHTML : '';
+            containerToppings.innerHTML = htmlSelectPrevio || '';
+
             const activos = (toppings || []).filter(t => t.toppings && t.toppings.activo === 'S');
 
             if (activos.length > 0) {
+                if (requiereOpcionesProd && htmlSelectPrevio) {
+                    containerToppings.innerHTML += `<div style="margin-top:12px;"></div>`;
+                }
                 activos.forEach(t => {
                     containerToppings.innerHTML += `
                         <div class="lc-topping-item" onclick="alternarCheckbox(${t.id_topping})"
-                            style="display:flex; justify-content:space-between; align-items:center; padding:10px; margin-bottom:6px; background:#fff; border:1px solid #f1f5f9; border-radius:8px; cursor:pointer;">
+                            style="display:flex; justify-content:space-between; align-items:center; padding:10px; margin-top:6px; background:#fff; border:1px solid #f1f5f9; border-radius:8px; cursor:pointer;">
                             <div style="display:flex; align-items:center;">
                                 <input type="checkbox" id="chk-top-${t.id_topping}" value="${t.id_topping}" data-precio="${t.toppings.precio_adicional}" onclick="event.stopPropagation(); calcularTotal();" style="margin-right:10px; accent-color:#D67280;">
                                 <span style="color:#6D3B37; font-size:0.9rem;">${escapeHtml(t.toppings.nombre)}</span>
@@ -394,9 +626,12 @@ async function abrirModal(idProducto) {
                         </div>`;
                 });
             } else {
-                containerToppings.innerHTML = '<p style="font-size:0.85rem; color:#888; text-align:center; padding:10px; margin:0;">No hay toppings disponibles.</p>';
+                if (!document.getElementById('lc-opciones-dinamicas')) {
+                    containerToppings.innerHTML = '<p style="font-size:0.85rem; color:#888; text-align:center; padding:10px; margin:0;">No hay toppings disponibles.</p>';
+                }
             }
         }
+
 
         const txtNotas = document.getElementById('modal-observaciones');
         if (txtNotas) txtNotas.value = '';
@@ -450,17 +685,41 @@ function calcularTotal() {
 }
 
 async function confirmarAgregado() {
+    // Si estamos en modo combo granizados, delega aquí.
+    if (comboSeleccionadoGranizados) {
+        await guardarComboConGranizadosEnCarrito();
+        return;
+    }
+
     const txtNotas = document.getElementById('modal-observaciones');
     const selectTam = document.getElementById('lc-product-tamanio');
     const toppingsSeleccionados = [];
+
+    // Validar opciones dinámicas para productos (requiere_opciones)
+    const prod = productosCache[idProductoSeleccionado];
+    const requiereOpcionesProd = !!(prod?.requiere_opciones === true || prod?.requiere_opciones === 'Y' || prod?.requiere_opciones === 'S');
+    let opcionDinamicaProd = null;
+    if (requiereOpcionesProd) {
+        const validSel = validarSeleccionOpcionesDinamicas();
+        if (!validSel.ok) {
+            alert('Debes seleccionar una opción para este producto.');
+            return;
+        }
+        opcionDinamicaProd = validSel.texto;
+    }
 
     document.querySelectorAll('#modal-toppings-container input[type="checkbox"]:checked').forEach(function (cb) {
         toppingsSeleccionados.push(parseInt(cb.value, 10));
     });
 
+
     const idTamanio = (selectTam && selectTam.value) ? parseInt(selectTam.value, 10) : null;
-    const observaciones = txtNotas ? txtNotas.value : '';
+    const observacionesBase = txtNotas ? txtNotas.value : '';
+    const observaciones = opcionDinamicaProd
+        ? obtenerObservacionesCombinadas(observacionesBase, `Opción: ${opcionDinamicaProd}`)
+        : observacionesBase;
     const sessionId = obtenerSessionId();
+
 
     try {
         // Precio del tamaño elegido (o precio base si no tiene tamaños)
@@ -528,6 +787,7 @@ async function confirmarAgregado() {
     }
 }
 
+
 async function buscarItemCarritoIdentico(sessionId, idProducto, idTamanio, toppingsSeleccionados) {
     let query = sb
         .from('carrito_items')
@@ -579,8 +839,10 @@ async function actualizarContadorYDatosCarrito() {
                 cantidad,
                 precio_unitario,
                 id_producto,
-                id_tamanio,
+id_tamanio,
                 id_combo,
+                observaciones,
+
                 productos ( nombre ),
                 tamanios ( nombre ),
                 combos ( nombre, descripcion ),
@@ -639,6 +901,7 @@ async function actualizarContadorYDatosCarrito() {
 
                     <div class="lc-cart-item-details">
                         ${detallesHtml}
+                        ${item.id_combo && item.observaciones ? `<div style="color:var(--brown-light); font-size:.85rem; margin-top:6px; white-space:pre-wrap;">Obs: ${escapeHtml(item.observaciones)}</div>` : ''}
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
