@@ -426,9 +426,6 @@ function setModoModalParaCombo(combo) {
 
 
 
-
-
-
 async function guardarComboConGranizadosEnCarrito() {
     if (!comboSeleccionadoGranizados) return;
     const { idCombo } = comboSeleccionadoGranizados;
@@ -632,32 +629,58 @@ async function abrirModal(idProducto) {
         if (errTam) throw errTam;
 
 
-        const selectTam = document.getElementById('lc-product-tamanio');
+// --- TAMAÑOS DEL PRODUCTO CON VASOS VISUALES ---
+        const selectTam = document.getElementById('lc-sizes-render-container');
         if (selectTam) {
             selectTam.innerHTML = '';
+            
             if (tamanios && tamanios.length > 0) {
-                tamanios.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id_tamanio;
-                    opt.setAttribute('data-precio', t.precio);
+                tamanios.forEach((t, index) => {
                     const nombreTam = t.tamanios ? t.tamanios.nombre : 'Tamaño';
-                    opt.innerText = `${nombreTam} ($${formatearPrecio(t.precio)})`;
-                    selectTam.appendChild(opt);
+                    // Crea una clase limpia sin espacios para escalar el vasito (ej: size-12oz)
+                    const claseMedida = `size-${nombreTam.toLowerCase().replace(/\s+/g, '')}`;
+                    // El primero de la lista se selecciona por defecto (.selected)
+                    const claseSelected = index === 0 ? 'selected' : '';
+
+                    selectTam.innerHTML += `
+                        <div class="lc-size-option ${claseSelected} ${claseMedida}" 
+                             data-id="${t.id_tamanio}" 
+                             data-precio="${t.precio}" 
+                             onclick="seleccionarTamañoElemento(this)">
+                            
+                            <div class="lc-size-icon-wrapper">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+                                    <path d="M6 8c0-3 3-4 6-4s6 1 6 4" />
+                                    <path d="M4 8h16" />
+                                    <path d="M5.5 8l1.5 11a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1.5-11" />
+                                    <path d="M7 13h10" style="opacity: 0.4; stroke-width: 1.5;" />
+                                </svg>
+                            </div>
+                            
+                            <span class="lc-size-label">${nombreTam}</span>
+                            <span class="lc-size-price">+$${formatearPrecio(t.precio)}</span>
+                        </div>`;
                 });
             } else {
-                const opt = document.createElement('option');
-                opt.value = '';
-                opt.setAttribute('data-precio', prod.precio);
-                opt.innerText = `Normal ($${formatearPrecio(prod.precio)})`;
-                selectTam.appendChild(opt);
+                // Si el producto no tiene tamaños en BD, crea un vaso único estándar
+                selectTam.innerHTML = `
+                    <div class="lc-size-option selected size-12oz" 
+                         data-id="" 
+                         data-precio="${prod.precio}" 
+                         onclick="seleccionarTamañoElemento(this)">
+                        <div class="lc-size-icon-wrapper">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 100%; height: 100%;">
+                                <path d="M6 8c0-3 3-4 6-4s6 1 6 4" />
+                                <path d="M4 8h16" />
+                                <path d="M5.5 8l1.5 11a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1.5-11" />
+                                <path d="M7 13h10" style="opacity: 0.4; stroke-width: 1.5;" />
+                            </svg>
+                        </div>
+                        <span class="lc-size-label">Normal</span>
+                        <span class="lc-size-price">$${formatearPrecio(prod.precio)}</span>
+                    </div>`;
             }
-            selectTam.onchange = function () {
-                evaluarVisibilidadToppings();
-                calcularTotal();
-            };
         }
-
-        // --- Toppings del producto ---
         const { data: toppings, error: errTop } = await sb
             .from('producto_toppings')
             .select('id_topping, toppings(nombre, precio_adicional, activo)')
@@ -743,12 +766,12 @@ function calcularTotal() {
         return;
     }
 
-    let selectTamanio = document.getElementById('lc-product-tamanio');
+    // BUSCAMOS EL VASITO QUE ESTÁ SELECCIONADO ACTUALMENTE
+    let vasoSeleccionado = document.querySelector('.lc-size-option.selected');
     let precioTamanio = 0;
 
-    if (selectTamanio && selectTamanio.selectedIndex >= 0) {
-        let opcionSeleccionada = selectTamanio.options[selectTamanio.selectedIndex];
-        let valorAttr = opcionSeleccionada.getAttribute('data-precio') || '0';
+    if (vasoSeleccionado) {
+        let valorAttr = vasoSeleccionado.getAttribute('data-precio') || '0';
         precioTamanio = parseFloat(valorAttr) || 0;
     }
 
@@ -1521,6 +1544,19 @@ function filtrarProductosHome() {
     }
 
     suggestionsContainer.style.display = 'block';
+}
+
+function seleccionarTamañoElemento(elemento) {
+    // Busca todos los vasitos en el contenedor y les quita la selección
+    const opciones = elemento.parentElement.querySelectorAll('.lc-size-option');
+    opciones.forEach(opt => opt.classList.remove('selected'));
+    
+    // Le pone la clase rosa .selected al vasito que acaban de tocar
+    elemento.classList.add('selected');
+    
+    // Re-calcula los valores en el modal instantáneamente
+    evaluarVisibilidadToppings();
+    calcularTotal();
 }
 
 document.addEventListener('click', function (event) {
