@@ -10,10 +10,64 @@ const categoriasConfig = {}; // id_categoria -> fila de categorias (para saber l
 const combosCache = {};      // id_combo -> fila de combos
 
 const LOGO_URL = 'https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/IMAGEN%20LECREME.jpg'; 
+
 document.addEventListener('DOMContentLoaded', function () {
     renderizarPagina();
     renderizarCombos();
     actualizarContadorYDatosCarrito();
+
+    // ==========================================
+    // 🌟 NUEVA LÓGICA DE SCROLL Y LUPA INTERACTIVA
+    // ==========================================
+    const header = document.querySelector(".lc-main-header");
+    const btnBuscar = document.getElementById("lc-btn-buscar");
+    const searchContainer = document.getElementById("lc-search-container");
+    const searchInput = document.getElementById("lc-home-search");
+
+    let isShrink = false;
+
+    // 1. Control de scroll suave sin parpadeos (Histeresis)
+    window.addEventListener("scroll", () => {
+        const scrollTop = window.scrollY;
+
+        if (!isShrink && scrollTop > 90) {
+            header.classList.add("shrink");
+            header.classList.remove("expanded");
+            isShrink = true;
+        } else if (isShrink && scrollTop < 15) { // Evita el bucle estático
+            header.classList.add("expanded");
+            header.classList.remove("shrink");
+            isShrink = false;
+        }
+    });
+
+    // 2. Escuchar el clic en la lupa para expandir el buscador
+    if (btnBuscar && searchContainer) {
+        btnBuscar.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Evita que otros clics del documento lo cierren al mismo tiempo
+            
+            // Alterna la clase activa que le da altura y opacidad en el CSS
+            searchContainer.classList.toggle("active");
+            
+            // Si se abre, enfoca el cursor automáticamente para escribir directo
+            if (searchContainer.classList.contains("active")) {
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 100);
+            }
+        });
+    }
+
+    // 3. Cerrar el buscador automáticamente si tocan fuera del header
+    document.addEventListener("click", (e) => {
+        if (header && !header.contains(e.target)) {
+            if (searchContainer) {
+                searchContainer.classList.remove("active");
+            }
+        }
+    });
+    // ==========================================
 });
 
 // ─────────────────────────────────────────────────────────
