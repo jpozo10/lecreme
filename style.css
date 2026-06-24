@@ -864,7 +864,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* =====================================================
-   HEADER LE CRÈME V3 (ESTRUCTURA INTEGRADA CON LOGO)
+   HEADER LE CRÈME V3 (COMPACTO Y ULTRA-FLUIDO)
 ===================================================== */
 
 .lc-main-header {
@@ -874,7 +874,8 @@ h1, h2, h3, h4, h5, h6,
     z-index: 1000;
     background: var(--lc-bg-soft);
     border-bottom: 1px solid rgba(215, 141, 153, .12);
-    transition: all .35s ease;
+    /* Transición global ultra suave para todas las propiedades */
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     backdrop-filter: blur(10px);
 }
 
@@ -883,6 +884,10 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     justify-content: center;
     padding: 10px 16px 0;
+    max-height: 40px;
+    opacity: 1;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .lc-delivery-text {
@@ -893,6 +898,7 @@ h1, h2, h3, h4, h5, h6,
     color: #C56B81;
     font-size: .78rem;
     font-weight: 600;
+    transition: all 0.4s ease;
 }
 
 /* Navbar principal */
@@ -902,7 +908,7 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 /* Sección de marca */
@@ -910,7 +916,7 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     gap: 16px;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     width: 100%;
     justify-content: center;
 }
@@ -920,7 +926,7 @@ h1, h2, h3, h4, h5, h6,
     background: #FFDCE4;
     border-radius: 50%;
     overflow: hidden;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     flex-shrink: 0;
 }
 
@@ -935,12 +941,12 @@ h1, h2, h3, h4, h5, h6,
 .lc-brand-info {
     display: flex;
     flex-direction: column;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .lc-meta-contacts {
     display: flex;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 /* Estilo Base de las Burbujas */
@@ -952,7 +958,7 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all .35s ease;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     border: 1px solid rgba(215, 141, 153, 0.1);
 }
 
@@ -960,6 +966,7 @@ h1, h2, h3, h4, h5, h6,
     width: 16px;
     height: 16px;
     fill: currentColor;
+    transition: transform 0.3s ease;
 }
 
 .lc-address {
@@ -973,6 +980,7 @@ h1, h2, h3, h4, h5, h6,
     max-width: 500px;
     margin: auto;
     padding: 0 16px 16px;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .lc-search {
@@ -984,26 +992,27 @@ h1, h2, h3, h4, h5, h6,
     background: white;
     box-shadow: 0 4px 12px rgba(0,0,0,.05);
     font-size: .95rem;
+    transition: all 0.4s ease;
 }
 
 /* =====================================================
    ESTADO EXPANDED (MODO GRANDE INICIAL)
 ===================================================== */
 .lc-main-header.expanded .lc-header-navbar {
-    padding: 26px 16px;
+    padding: 20px 16px;
 }
 
 .lc-main-header.expanded .lc-header-brand-section {
-    flex-direction: row; /* Logo al lado de los datos */
+    flex-direction: row;
 }
 
 .lc-main-header.expanded .lc-logo-wrapper {
-    width: 95px;
-    height: 95px;
+    width: 90px;
+    height: 90px;
 }
 
 .lc-main-header.expanded .lc-meta-contacts {
-    flex-direction: column; /* Una burbuja sobre otra en grande */
+    flex-direction: column;
     gap: 6px;
 }
 
@@ -1013,61 +1022,82 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .lc-main-header.expanded .lc-meta-item span {
-    display: inline; /* Se ven las letras en grande */
+    display: inline;
     font-size: .78rem;
     font-weight: 600;
     margin-left: 6px;
 }
 
 /* =====================================================
-   ESTADO SHRINK (MODO COMPACTO - TODO VERTICAL ABAJO)
+   ESTADO SHRINK (MINIMALISTA - MENOS ESPACIO)
 ===================================================== */
-.lc-main-header.shrink .lc-header-navbar {
-    padding: 12px 16px;
+
+/* Al hacer scroll, reducimos la altura de la barra superior casi a cero */
+.lc-main-header.shrink .lc-header-top-bar {
+    max-height: 0;
+    padding-top: 0;
+    opacity: 0;
+    pointer-events: none; /* Evita clics fantasmas */
 }
 
-/* Forzamos a que las redes se organicen abajo del logo */
+/* Relleno súper ajustado para ahorrar espacio arriba */
+.lc-main-header.shrink .lc-header-navbar {
+    padding: 6px 16px 4px;
+}
+
+/* Forzamos alineación vertical compacta */
 .lc-main-header.shrink .lc-header-brand-section {
     flex-direction: column !important;
-    gap: 8px;
+    gap: 4px;
 }
 
-/* Logo más pequeño y centrado arriba */
+/* Logo muy compacto para formato barra móvil */
 .lc-main-header.shrink .lc-logo-wrapper {
-    width: 58px;
-    height: 58px;
+    width: 44px;
+    height: 44px;
 }
 
-/* Las 3 burbujas se ponen una al lado de la otra abajo del logo */
+/* Las 3 burbujas redondas pegadas al logo */
 .lc-main-header.shrink .lc-meta-contacts {
     flex-direction: row;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
+    margin-top: 0;
 }
 
-/* Ocultamos las letras en modo shrink */
+/* Desaparecen los textos con transición limpia */
 .lc-main-header.shrink .lc-meta-item span {
     display: none;
 }
 
-/* Convertimos las 3 burbujas en círculos perfectos */
+/* Botones circulares pequeños */
 .lc-main-header.shrink .lc-meta-item {
-    padding: 10px;
+    padding: 0;
     border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
 }
 
-/* Forzamos que la burbuja de la dirección aparezca redonda e idéntica a las demás */
-.lc-main-header.shrink .lc-address {
-    display: flex !important;
+.lc-main-header.shrink .lc-meta-icon {
+    width: 14px;
+    height: 14px;
+}
+
+/* Reducimos el colchón inferior del buscador */
+.lc-main-header.shrink .lc-search-bar-wrapper {
+    padding: 0 16px 10px;
+}
+
+/* Buscador un poco más delgado al contraer */
+.lc-main-header.shrink .lc-search {
+    padding: 11px 18px;
+    font-size: 0.9rem;
 }
 
 /* Responsive */
 @media(max-width:480px){
     .lc-main-header.expanded .lc-logo-wrapper {
-        width: 85px;
-        height: 85px;
+        width: 80px;
+        height: 80px;
     }
 }
