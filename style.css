@@ -1049,8 +1049,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .lc-main-header.expanded .lc-logo-wrapper {
-    width: 90px;
-    height: 90px;
+    width: 115px;       /* 🚀 Antes 90px - Ahora más grande y llamativo */
+    height: 115px;
+    box-shadow: 0 4px 14px rgba(215, 141, 153, 0.15); /* Sombra suave para darle volumen */
 }
 
 .lc-main-header.expanded .lc-meta-contacts {
@@ -1089,8 +1090,8 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .lc-main-header.shrink .lc-logo-wrapper {
-    width: 46px;
-    height: 46px;
+    width: 54px;        /* 🚀 Antes 46px - Tamaño compacto pero totalmente legible */
+    height: 54px;
 }
 
 .lc-main-header.shrink .lc-meta-contacts {
@@ -1111,8 +1112,118 @@ h1, h2, h3, h4, h5, h6,
 }
 
 @media(max-width:480px) {
+    /* En pantallas de celulares muy pequeños, un tamaño de 100px evita que se desborde */
     .lc-main-header.expanded .lc-logo-wrapper {
-        width: 80px;
-        height: 80px;
+        width: 100px;
+        height: 100px;
     }
+}
+/* --- SELECTOR DE TAMAÑOS CON VASOS --- */
+.lc-size-selector-group {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+}
+
+.lc-size-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #FFFFFF;
+    border: 2px solid #F3E1E4;
+    border-radius: 16px;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.lc-size-option:hover {
+    border-color: #D78D99;
+    background-color: #FFF8F9;
+}
+
+.lc-size-option.selected {
+    border-color: #D78D99;
+    background-color: #FFF3F5;
+    box-shadow: 0 4px 12px rgba(215, 141, 153, 0.15);
+}
+
+.lc-size-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #A38A86;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.lc-size-option.selected .lc-size-icon-wrapper {
+    color: #D78D99;
+    transform: scale(1.08);
+}
+
+.lc-size-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #5A3A36;
+    margin-bottom: 2px;
+}
+
+.lc-size-price {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #D78D99;
+}
+
+/* ESCALA DE LOS VASOS (De menor a mayor) */
+.size-7oz svg, .size-8oz svg { width: 26px; height: 30px; }
+.size-10oz svg { width: 30px; height: 36px; }
+.size-12oz svg { width: 34px; height: 42px; }
+.size-16oz svg { width: 40px; height: 48px; }
+.size-24oz svg { width: 46px; height: 54px; }
+
+/* =====================================================
+   CORRECCIÓN DE TAMAÑOS Y ESCALA DE VASOS
+===================================================== */
+
+/* Evita que cuando haya un solo tamaño se estire y se vea gigante */
+.lc-size-option {
+    flex: 1;
+    max-width: 100px; /* Ajusta el ancho máximo de cada tarjeta */
+    min-width: 70px;
+    box-sizing: border-box;
+}
+
+/* Forzar la alineación del contenedor de los vasos */
+.lc-size-selector-group {
+    display: flex;
+    justify-content: center; /* Centra los vasitos si hay pocos */
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    width: 100%;
+}
+
+/* Ajuste exacto de los vasitos rompiendo la restricción interna inline */
+.size-7oz .lc-size-icon-wrapper svg, 
+.size-8oz .lc-size-icon-wrapper svg { 
+    width: 26px !important; height: 30px !important; 
+}
+.size-10oz .lc-size-icon-wrapper svg { 
+    width: 30px !important; height: 36px !important; 
+}
+.size-12oz .lc-size-icon-wrapper svg,
+.size-normal .lc-size-icon-wrapper svg { /* Para productos de tamaño único */
+    width: 35px !important; height: 42px !important; 
+}
+.size-16oz .lc-size-icon-wrapper svg { 
+    width: 40px !important; height: 48px !important; 
+}
+.size-24oz .lc-size-icon-wrapper svg { 
+    width: 46px !important; height: 54px !important; 
 }
