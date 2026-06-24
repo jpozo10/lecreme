@@ -729,3 +729,345 @@ h1, h2, h3, h4, h5, h6,
         color-scheme: light !important;
     }
 }
+/* =====================================================
+   HEADER LE CRÈME V2 (OPTIMIZADO CON BURBUJAS)
+===================================================== */
+
+.lc-main-header {
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--lc-bg-soft);
+    border-bottom: 1px solid rgba(215, 141, 153, .12);
+    transition: all .35s ease;
+    backdrop-filter: blur(10px);
+}
+
+/* Barra superior */
+.lc-header-top-bar {
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px 0;
+}
+
+.lc-delivery-text {
+    margin: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: #FCE3E8;
+    color: #C56B81;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+/* Navbar */
+.lc-header-navbar {
+    max-width: 500px;
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all .35s ease;
+}
+
+/* Marca */
+.lc-header-brand-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all .35s ease;
+}
+
+/* Logo */
+.lc-logo-wrapper {
+    background: #FFDCE4;
+    border-radius: 50%;
+    overflow: hidden;
+    transition: all .35s ease;
+    flex-shrink: 0;
+}
+
+.lc-brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Información */
+.lc-brand-info {
+    display: flex;
+    flex-direction: column;
+    transition: all .35s ease;
+}
+
+.lc-brand-name {
+    margin: 0;
+    color: #5A3A36;
+    font-weight: 800;
+    line-height: 1;
+    transition: all .35s ease;
+}
+
+/* Burbujas de Redes Sociales */
+.lc-meta-contacts {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    transition: all .35s ease;
+}
+
+.lc-meta-item {
+    text-decoration: none;
+    background: #FCE3E8; /* Fondo burbuja */
+    color: #C56B81;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .35s ease;
+    border: 1px solid rgba(215, 141, 153, 0.1);
+}
+
+.lc-meta-icon {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.lc-address {
+    background: #FFF0ED;
+    color: #9B7B78;
+    border-color: rgba(155, 123, 120, 0.1);
+}
+
+/* Buscador */
+.lc-search-bar-wrapper {
+    max-width: 500px;
+    margin: auto;
+    padding: 0 16px 16px;
+}
+
+.lc-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    border-radius: 999px;
+    border: none;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+    font-size: .95rem;
+}
+
+/* =====================================================
+   HEADER LE CRÈME V3 (ESTRUCTURA INTEGRADA CON LOGO)
+===================================================== */
+
+.lc-main-header {
+    width: 100%;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--lc-bg-soft);
+    border-bottom: 1px solid rgba(215, 141, 153, .12);
+    transition: all .35s ease;
+    backdrop-filter: blur(10px);
+}
+
+/* Barra superior */
+.lc-header-top-bar {
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px 0;
+}
+
+.lc-delivery-text {
+    margin: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: #FCE3E8;
+    color: #C56B81;
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+/* Navbar principal */
+.lc-header-navbar {
+    max-width: 500px;
+    margin: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all .35s ease;
+}
+
+/* Sección de marca */
+.lc-header-brand-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all .35s ease;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Contenedor del Logo */
+.lc-logo-wrapper {
+    background: #FFDCE4;
+    border-radius: 50%;
+    overflow: hidden;
+    transition: all .35s ease;
+    flex-shrink: 0;
+}
+
+.lc-brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Información y Bloque de Contactos */
+.lc-brand-info {
+    display: flex;
+    flex-direction: column;
+    transition: all .35s ease;
+}
+
+.lc-meta-contacts {
+    display: flex;
+    transition: all .35s ease;
+}
+
+/* Estilo Base de las Burbujas */
+.lc-meta-item {
+    text-decoration: none;
+    background: #FCE3E8;
+    color: #C56B81;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .35s ease;
+    border: 1px solid rgba(215, 141, 153, 0.1);
+}
+
+.lc-meta-icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+.lc-address {
+    background: #FFF0ED;
+    color: #9B7B78;
+    border-color: rgba(155, 123, 120, 0.1);
+}
+
+/* Buscador */
+.lc-search-bar-wrapper {
+    max-width: 500px;
+    margin: auto;
+    padding: 0 16px 16px;
+}
+
+.lc-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    border-radius: 999px;
+    border: none;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+    font-size: .95rem;
+}
+
+/* =====================================================
+   ESTADO EXPANDED (MODO GRANDE INICIAL)
+===================================================== */
+.lc-main-header.expanded .lc-header-navbar {
+    padding: 26px 16px;
+}
+
+.lc-main-header.expanded .lc-header-brand-section {
+    flex-direction: row; /* Logo al lado de los datos */
+}
+
+.lc-main-header.expanded .lc-logo-wrapper {
+    width: 95px;
+    height: 95px;
+}
+
+.lc-main-header.expanded .lc-meta-contacts {
+    flex-direction: column; /* Una burbuja sobre otra en grande */
+    gap: 6px;
+}
+
+.lc-main-header.expanded .lc-meta-item {
+    padding: 6px 14px;
+    justify-content: flex-start;
+}
+
+.lc-main-header.expanded .lc-meta-item span {
+    display: inline; /* Se ven las letras en grande */
+    font-size: .78rem;
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+/* =====================================================
+   ESTADO SHRINK (MODO COMPACTO - TODO VERTICAL ABAJO)
+===================================================== */
+.lc-main-header.shrink .lc-header-navbar {
+    padding: 12px 16px;
+}
+
+/* Forzamos a que las redes se organicen abajo del logo */
+.lc-main-header.shrink .lc-header-brand-section {
+    flex-direction: column !important;
+    gap: 8px;
+}
+
+/* Logo más pequeño y centrado arriba */
+.lc-main-header.shrink .lc-logo-wrapper {
+    width: 58px;
+    height: 58px;
+}
+
+/* Las 3 burbujas se ponen una al lado de la otra abajo del logo */
+.lc-main-header.shrink .lc-meta-contacts {
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Ocultamos las letras en modo shrink */
+.lc-main-header.shrink .lc-meta-item span {
+    display: none;
+}
+
+/* Convertimos las 3 burbujas en círculos perfectos */
+.lc-main-header.shrink .lc-meta-item {
+    padding: 10px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    box-sizing: border-box;
+}
+
+/* Forzamos que la burbuja de la dirección aparezca redonda e idéntica a las demás */
+.lc-main-header.shrink .lc-address {
+    display: flex !important;
+}
+
+/* Responsive */
+@media(max-width:480px){
+    .lc-main-header.expanded .lc-logo-wrapper {
+        width: 85px;
+        height: 85px;
+    }
+}
