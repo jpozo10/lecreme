@@ -845,26 +845,55 @@ h1, h2, h3, h4, h5, h6,
     border-color: rgba(155, 123, 120, 0.1);
 }
 
-/* Buscador */
+/* =====================================================
+   ANIMACIÓN Y DESPLIEGUE DEL BUSCADOR (LUPA)
+===================================================== */
+
+/* 1. Contenedor del Buscador (Por defecto está cerrado e invisible) */
 .lc-search-bar-wrapper {
     max-width: 500px;
     margin: auto;
-    padding: 0 16px 16px;
+    padding: 0 16px;
+    max-height: 0;       /* Altura 0 para que no ocupe espacio */
+    opacity: 0;          /* Invisible al inicio */
+    overflow: hidden;    /* Oculta el input de texto mientras esté cerrado */
+    
+    /* Esta es la clave: transiciona la altura, la opacidad y los rellenos al mismo tiempo */
+    transition: max-height 0.35s cubic-bezier(0.25, 1, 0.5, 1), 
+                opacity 0.25s ease, 
+                padding 0.35s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+/* 2. Clase activa (Se inyecta por JS al presionar la burbuja de la Lupa) */
+.lc-search-bar-wrapper.active {
+    max-height: 75px;     /* Se estira hacia abajo suavemente */
+    opacity: 1;           /* Aparece de forma gradual */
+    padding-top: 6px;     /* Da un espacio arriba para no pegarse a las burbujas */
+    padding-bottom: 12px; /* Margen inferior estético */
+}
+
+/* 3. El Input de Texto interno (Suavizado al enfocar) */
 .lc-search {
     width: 100%;
     box-sizing: border-box;
-    padding: 16px 20px;
+    padding: 12px 20px;
     border-radius: 999px;
     border: none;
     background: white;
     box-shadow: 0 4px 12px rgba(0,0,0,.05);
     font-size: .95rem;
+    outline: none;
+    /* Al hacer clic dentro para escribir, la sombra cambia suavemente */
+    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+.lc-search:focus {
+    box-shadow: 0 4px 14px rgba(215, 141, 153, 0.2); /* Sombra sutil rosada al escribir */
+    background-color: #FFFDFE;
 }
 
 /* =====================================================
-   HEADER LE CRÈME V3 (COMPACTO Y ULTRA-FLUIDO)
+   HEADER LE CRÈME V4 (BURBUJA DE BÚSQUEDA INTERACTIVA)
 ===================================================== */
 
 .lc-main-header {
@@ -874,8 +903,7 @@ h1, h2, h3, h4, h5, h6,
     z-index: 1000;
     background: var(--lc-bg-soft);
     border-bottom: 1px solid rgba(215, 141, 153, .12);
-    /* Transición global ultra suave para todas las propiedades */
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
     backdrop-filter: blur(10px);
 }
 
@@ -887,7 +915,7 @@ h1, h2, h3, h4, h5, h6,
     max-height: 40px;
     opacity: 1;
     overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
 }
 
 .lc-delivery-text {
@@ -898,7 +926,6 @@ h1, h2, h3, h4, h5, h6,
     color: #C56B81;
     font-size: .78rem;
     font-weight: 600;
-    transition: all 0.4s ease;
 }
 
 /* Navbar principal */
@@ -908,15 +935,14 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
 }
 
-/* Sección de marca */
 .lc-header-brand-section {
     display: flex;
     align-items: center;
     gap: 16px;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
     width: 100%;
     justify-content: center;
 }
@@ -926,7 +952,7 @@ h1, h2, h3, h4, h5, h6,
     background: #FFDCE4;
     border-radius: 50%;
     overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
     flex-shrink: 0;
 }
 
@@ -937,19 +963,18 @@ h1, h2, h3, h4, h5, h6,
     display: block;
 }
 
-/* Información y Bloque de Contactos */
 .lc-brand-info {
     display: flex;
     flex-direction: column;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
 }
 
 .lc-meta-contacts {
     display: flex;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
 }
 
-/* Estilo Base de las Burbujas */
+/* Estilo de las Burbujas */
 .lc-meta-item {
     text-decoration: none;
     background: #FCE3E8;
@@ -958,15 +983,15 @@ h1, h2, h3, h4, h5, h6,
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    transition: all 0.35s ease;
     border: 1px solid rgba(215, 141, 153, 0.1);
+    cursor: pointer;
 }
 
 .lc-meta-icon {
     width: 16px;
     height: 16px;
     fill: currentColor;
-    transition: transform 0.3s ease;
 }
 
 .lc-address {
@@ -975,24 +1000,41 @@ h1, h2, h3, h4, h5, h6,
     border-color: rgba(155, 123, 120, 0.1);
 }
 
-/* Buscador */
+/* Nueva Burbuja Buscador */
+.lc-search-trigger {
+    background: #E3F2FC;
+    color: #4A90E2;
+    border-color: rgba(74, 144, 226, 0.1);
+}
+
+/* Contenedor Desplegable del Buscador */
 .lc-search-bar-wrapper {
     max-width: 500px;
     margin: auto;
-    padding: 0 16px 16px;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    padding: 0 16px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Clase activa cuando se abre la barra */
+.lc-search-bar-wrapper.active {
+    max-height: 70px;
+    padding-bottom: 14px;
+    opacity: 1;
 }
 
 .lc-search {
     width: 100%;
     box-sizing: border-box;
-    padding: 16px 20px;
+    padding: 12px 20px;
     border-radius: 999px;
     border: none;
     background: white;
     box-shadow: 0 4px 12px rgba(0,0,0,.05);
     font-size: .95rem;
-    transition: all 0.4s ease;
+    outline: none;
 }
 
 /* =====================================================
@@ -1029,73 +1071,46 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* =====================================================
-   ESTADO SHRINK (MINIMALISTA - MENOS ESPACIO)
+   ESTADO SHRINK (CONTRAÍDO ULTRA COMPACTO)
 ===================================================== */
-
-/* Al hacer scroll, reducimos la altura de la barra superior casi a cero */
 .lc-main-header.shrink .lc-header-top-bar {
     max-height: 0;
     padding-top: 0;
     opacity: 0;
-    pointer-events: none; /* Evita clics fantasmas */
 }
 
-/* Relleno súper ajustado para ahorrar espacio arriba */
 .lc-main-header.shrink .lc-header-navbar {
-    padding: 6px 16px 4px;
+    padding: 8px 16px;
 }
 
-/* Forzamos alineación vertical compacta */
 .lc-main-header.shrink .lc-header-brand-section {
     flex-direction: column !important;
-    gap: 4px;
+    gap: 6px;
 }
 
-/* Logo muy compacto para formato barra móvil */
 .lc-main-header.shrink .lc-logo-wrapper {
-    width: 44px;
-    height: 44px;
+    width: 46px;
+    height: 46px;
 }
 
-/* Las 3 burbujas redondas pegadas al logo */
 .lc-main-header.shrink .lc-meta-contacts {
     flex-direction: row;
     justify-content: center;
     gap: 8px;
-    margin-top: 0;
 }
 
-/* Desaparecen los textos con transición limpia */
 .lc-main-header.shrink .lc-meta-item span {
     display: none;
 }
 
-/* Botones circulares pequeños */
 .lc-main-header.shrink .lc-meta-item {
     padding: 0;
     border-radius: 50%;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
 }
 
-.lc-main-header.shrink .lc-meta-icon {
-    width: 14px;
-    height: 14px;
-}
-
-/* Reducimos el colchón inferior del buscador */
-.lc-main-header.shrink .lc-search-bar-wrapper {
-    padding: 0 16px 10px;
-}
-
-/* Buscador un poco más delgado al contraer */
-.lc-main-header.shrink .lc-search {
-    padding: 11px 18px;
-    font-size: 0.9rem;
-}
-
-/* Responsive */
-@media(max-width:480px){
+@media(max-width:480px) {
     .lc-main-header.expanded .lc-logo-wrapper {
         width: 80px;
         height: 80px;
