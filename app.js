@@ -1368,16 +1368,16 @@ async function procesarPedidoWhatsApp() {
             mensaje += `💝 Propina: $${montoPropina.toLocaleString('es-CO')}\n`;
         }
 
-        mensaje += '📦 Entrega: ' + entrega;
-        mensaje += `\n👤 Nombre Completo: ${nombre}`;
-        mensaje += `\n📱 Celular: ${celular}`;
+        mensaje += 'Entrega: ' + entrega;
+        mensaje += `\nNombre Completo: ${nombre}`;
+        mensaje += `\nCelular: ${celular}`;
         if (entrega === 'Domicilio') {
-            mensaje += `\n📍 Barrio: ${barrio}`;
-            mensaje += '\n📍 Dirección: ' + direccion;
-            mensaje += '\n🛵 Valor domicilio: Por confirmar';
+            mensaje += `\nBarrio: ${barrio}`;
+            mensaje += '\nDirección: ' + direccion;
+            mensaje += '\nValor domicilio: Por confirmar';
         }
-        mensaje += '\n💰 Pago: ' + pago;
-        mensaje += '\n💵 *Total final: ' + totalText + '*';
+        mensaje += '\nPago: ' + pago;
+        mensaje += '\n*Total final: ' + totalText + '*';
 
         // 5. OBTENER EL NÚMERO DE WHATSAPP
         const { data: config, error: errConfig } = await sb
