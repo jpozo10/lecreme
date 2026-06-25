@@ -1293,7 +1293,6 @@ async function procesarPedidoWhatsApp() {
     var totalNumerico = parseInt(totalText.replace(/[^0-9]/g, ''), 10) || 0;
     var sessionId = obtenerSessionId();
 
-    // Feedback visual + evita doble clic mientras procesa
     var btnCheckout = document.querySelector('.lc-btn-checkout');
     var textoOriginalBtn = btnCheckout ? btnCheckout.innerText : '';
     if (btnCheckout) {
@@ -1301,25 +1300,8 @@ async function procesarPedidoWhatsApp() {
         btnCheckout.innerText = 'Procesando...';
     }
 
-    // 🔑 CLAVE DEL FIX: Abrimos la pestaña AHORA MISMO (en blanco) para guardar el gesto de usuario
-    var ventanaWhatsApp = window.open('', '_blank');
-
-    // 🌟 OPTIMIZACIÓN: Le inyectamos un aviso temporal para que Android mantenga la pestaña viva y el usuario no vea una pantalla muerta
-    if (ventanaWhatsApp) {
-        ventanaWhatsApp.document.write(`
-            <html>
-                <head><title>Procesando Pedido...</title></head>
-                <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#5A3A36; background:#FFF8F9; text-align:center; padding:20px;">
-                    <h2 style="margin-bottom:10px;">¡Ya casi listo! 🚀</h2>
-                    <p style="font-size:1.1rem; color:#A38A86;">Estamos registrando tu pedido en Le Crème...</p>
-                </body>
-            </html>
-        `);
-        ventanaWhatsApp.document.close(); // Cierra el flujo de escritura para que cargue bien
-    }
-
     try {
-        // 1. GUARDAR EN LA TABLA DE PEDIDOS Y OBTENER EL CONSECUTIVO
+        // 1. GUARDAR EN LA TABLA DE PEDIDOS
         const { data: nuevoPedido, error: errPedido } = await sb
             .from('pedidos')
             .insert({
@@ -1337,7 +1319,7 @@ async function procesarPedidoWhatsApp() {
             .single();
 
         if (errPedido || !nuevoPedido) {
-            throw new Error('No se pudo registrar el pedido principal: ' + (errPedido?.message || 'Error desconocido'));
+            throw new Error('No se pudo registrar el pedido principal.');
         }
 
         const numeroPedido = nuevoPedido.id_pedido;
@@ -1348,23 +1330,20 @@ async function procesarPedidoWhatsApp() {
             .select('id_producto, id_combo, id_tamanio, cantidad, precio_unitario, observaciones')
             .eq('session_id', sessionId);
 
-        if (errCarrito || !itemsCarrito || itemsCarrito.length === 0) {
-            throw new Error('El carrito está vacío o no se pudo leer.');
+        if (!errCarrito && itemsCarrito && itemsCarrito.length > 0) {
+            // 3. GUARDAR EL DETALLE EN PARALELO
+            await Promise.all(itemsCarrito.map(item =>
+                sb.from('pedido_detalle').insert({
+                    id_pedido: numeroPedido,
+                    id_producto: item.id_producto || null,
+                    id_combo: item.id_combo || null,
+                    id_tamanio: item.id_tamanio || null,
+                    cantidad: item.cantidad,
+                    precio_unitario: item.precio_unitario,
+                    observaciones: item.observaciones
+                })
+            ));
         }
-
-        // 3. GUARDAR EL DETALLE EN PARALELO
-        const resultadosDetalle = await Promise.all(itemsCarrito.map(item =>
-            sb.from('pedido_detalle').insert({
-                id_pedido: numeroPedido,
-                id_producto: item.id_producto || null,
-                id_combo: item.id_combo || null,
-                id_tamanio: item.id_tamanio || null,
-                cantidad: item.cantidad,
-                precio_unitario: item.precio_unitario,
-                observaciones: item.observaciones
-            })
-        ));
-        resultadosDetalle.forEach(r => { if (r.error) console.error('Error insertando detalle:', r.error); });
 
         // 4. CONSTRUCCIÓN DEL MENSAJE
         var mensaje = `¡Hola Le Crème! 🧁 *Confirmar Pedido #${numeroPedido}*\n\n`;
@@ -1385,39 +1364,28 @@ async function procesarPedidoWhatsApp() {
         if (entrega === 'Domicilio') {
             mensaje += `\nBarrio: ${barrio}`;
             mensaje += '\nDirección: ' + direccion;
-            mensaje += '\nValor domicilio: Por confirmar';
         }
         mensaje += '\nPago: ' + pago;
         mensaje += '\n*Total final: ' + totalText + '*';
 
         // 5. OBTENER EL NÚMERO DE WHATSAPP
-        const { data: config, error: errConfig } = await sb
+        const { data: config } = await sb
             .from('lc_configuracion')
             .select('whatsapp_recepcion')
             .eq('id_config_tienda', 1)
             .single();
 
-        if (errConfig || !config) {
-            throw new Error('No se pudo obtener el número de WhatsApp de la tienda.');
-        }
-
-        var numWhatsApp = (config.whatsapp_recepcion || '').replace(/\D/g, '');
+        var numWhatsApp = (config?.whatsapp_recepcion || '').replace(/\D/g, '');
         var urlWhatsApp = 'https://wa.me/' + numWhatsApp + '?text=' + encodeURIComponent(mensaje);
 
-        // 6. NAVEGAMOS LA PESTAÑA QUE YA TENÍAMOS ABIERTA
-        if (ventanaWhatsApp && !ventanaWhatsApp.closed) {
-            ventanaWhatsApp.location.href = urlWhatsApp;
-        } else {
-            // Fallback directo por si acaso la cerraron o falló el pop-up inicial
-            window.location.href = urlWhatsApp;
-        }
+        // 6. MOSTRAR EL MODAL DE ÉXITO EN LA PÁGINA (Cero pestañas feas)
+        mostrarModalExitoWhatsApp(urlWhatsApp, numeroPedido);
 
         // 7. VACIAR CARRITO
         await vaciarCarritoTrasPedido();
 
     } catch (err) {
-        if (ventanaWhatsApp) ventanaWhatsApp.close();
-        console.error('Error general en el proceso de checkout:', err);
+        console.error(err);
         alert('❌ Error al procesar el pedido: ' + err.message);
     } finally {
         if (btnCheckout) {
@@ -1425,6 +1393,28 @@ async function procesarPedidoWhatsApp() {
             btnCheckout.innerText = textoOriginalBtn || 'Confirmar Pedido 📲';
         }
     }
+}
+
+function mostrarModalExitoWhatsApp(url, numeroPedido) {
+    // Si ya existe uno por si acaso, lo borramos
+    const modalExistente = document.getElementById('lc-modal-success-whatsapp');
+    if (modalExistente) modalExistente.remove();
+
+    const modalHTML = `
+        <div id="lc-modal-success-whatsapp" style="position:fixed; top:0; left:0; width:100%; height:100vh; background:rgba(90,58,54,0.6); display:flex; align-items:center; justify-content:center; z-index:99999; padding:20px; box-sizing:border-box; backdrop-filter:blur(4px);">
+            <div style="background:#FFFFFF; max-width:400px; width:100%; border-radius:24px; padding:30px 24px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.1); box-sizing:border-box; border:3px solid #FFF3F5;">
+                <div style="font-size: 50px; margin-bottom: 15px;">🧁</div>
+                <h3 style="margin:0 0 10px 0; font-family:sans-serif; color:#5A3A36; font-size:1.4rem; font-weight:800;">¡Pedido Guardado!</h3>
+                <p style="margin:0 0 20px 0; font-family:sans-serif; color:#A38A86; font-size:0.95rem; line-height:1.4;">Su pedido <strong>#${numeroPedido}</strong> se ha registrado en el sistema. Toca el botón de abajo para enviarlo directamente a nuestro WhatsApp.</p>
+                
+                <a href="${url}" target="_blank" onclick="document.getElementById('lc-modal-success-whatsapp').remove();" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#25D366; color:#FFFFFF; text-decoration:none; padding:14px; border-radius:14px; font-family:sans-serif; font-weight:700; font-size:1rem; box-shadow:0 4px 12px rgba(37,211,102,0.3); transition:transform 0.2s;">
+                    Enviar a WhatsApp 📲
+                </a>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 async function vaciarCarritoTrasPedido() {
