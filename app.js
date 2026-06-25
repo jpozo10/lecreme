@@ -10,6 +10,9 @@ const categoriasConfig = {}; // id_categoria -> fila de categorias (para saber l
 const combosCache = {};      // id_combo -> fila de combos
 
 const LOGO_URL = 'https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/IMAGEN%20LECREME.jpg'; 
+const DEFAULT_WHATSAPP_NUMBER = '573148679569';
+const SUPABASE_TIMEOUT_MS = 8000;
+let pedidoEnProceso = false;
 
 document.addEventListener('DOMContentLoaded', function () {
     renderizarPagina();
@@ -122,14 +125,23 @@ async function renderizarPagina() {
     const seccionesProductos = document.getElementById('lc-products-sections');
 
     try {
-        const { data: categorias, error } = await sb
-            .from('categorias')
-            .select('*')
-            .eq('activo', 'S')
-            .order('orden_mostrar', { ascending: true })
-            .order('id_categoria', { ascending: true });
+        // Antes: 1 consulta de categorías + 1 consulta de productos POR CADA categoría (secuencial).
+        // Ahora: solo 2 consultas en total, en paralelo. Mucho más rápido.
+        const [{ data: categorias, error: errCat }, { data: productos, error: errProd }] = await Promise.all([
+            sb.from('categorias')
+              .select('*')
+              .eq('activo', 'S')
+              .order('orden_mostrar', { ascending: true })
+              .order('id_categoria', { ascending: true }),
+            sb.from('productos')
+              .select('*')
+              .eq('activo', 'S')
+              .order('orden_mostrar', { ascending: true })
+              .order('id_producto', { ascending: true })
+        ]);
 
-        if (error) throw error;
+        if (errCat) throw errCat;
+        if (errProd) throw errProd;
 
         listaCategorias.innerHTML = '';
         seccionesProductos.innerHTML = '';
@@ -139,12 +151,18 @@ async function renderizarPagina() {
             return;
         }
 
+        // Agrupamos los productos por categoría en memoria (ya los traemos todos de una sola vez)
+        const productosPorCategoria = {};
+        (productos || []).forEach(prod => {
+            productosCache[prod.id_producto] = prod;
+            if (!productosPorCategoria[prod.id_categoria]) productosPorCategoria[prod.id_categoria] = [];
+            productosPorCategoria[prod.id_categoria].push(prod);
+        });
+
         categorias.forEach(cat => {
             categoriasConfig[cat.id_categoria] = cat;
             listaCategorias.appendChild(crearCategoriaItem(cat));
-        });
 
-        for (const cat of categorias) {
             const wrapper = document.createElement('div');
             wrapper.id = 'sec-' + cat.id_categoria;
             wrapper.className = 'lc-products-wrapper';
@@ -158,23 +176,12 @@ async function renderizarPagina() {
             grid.className = 'lc-products-grid';
             wrapper.appendChild(grid);
 
-            seccionesProductos.appendChild(wrapper);
-
-            const { data: productos, error: errProd } = await sb
-                .from('productos')
-                .select('*')
-                .eq('id_categoria', cat.id_categoria)
-                .eq('activo', 'S')
-                .order('orden_mostrar', { ascending: true })
-                .order('id_producto', { ascending: true });
-
-            if (errProd) { console.error('Error cargando productos:', errProd); continue; }
-
-            (productos || []).forEach(prod => {
-                productosCache[prod.id_producto] = prod;
+            (productosPorCategoria[cat.id_categoria] || []).forEach(prod => {
                 grid.appendChild(crearProductoCard(prod));
             });
-        }
+
+            seccionesProductos.appendChild(wrapper);
+        });
     } catch (err) {
         console.error('Error cargando la página:', err);
         listaCategorias.innerHTML = '<p style="padding:10px; color:#c0392b;">No se pudo conectar con la base de datos. Revisa config.js.</p>';
@@ -1262,13 +1269,11 @@ async function procesarPedidoWhatsApp() {
         document.getElementById('lc-cart-nombre').focus();
         return;
     }
-
     if (!celular.trim()) {
         alert('⚠️ Por favor ingresa tu Número de Celular.');
         document.getElementById('lc-cart-celular').focus();
         return;
     }
-
     if (entrega === 'Domicilio') {
         if (!barrio.trim()) {
             alert('⚠️ Por favor ingresa tu Barrio.');
@@ -1287,6 +1292,20 @@ async function procesarPedidoWhatsApp() {
     var montoPropina = _calcularMontoPropina(subtotal);
     var totalNumerico = parseInt(totalText.replace(/[^0-9]/g, ''), 10) || 0;
     var sessionId = obtenerSessionId();
+
+    // Feedback visual + evita doble clic mientras procesa
+    var btnCheckout = document.querySelector('.lc-btn-checkout');
+    var textoOriginalBtn = btnCheckout ? btnCheckout.innerText : '';
+    if (btnCheckout) {
+        btnCheckout.disabled = true;
+        btnCheckout.innerText = 'Procesando...';
+    }
+
+    // 🔑 CLAVE DEL FIX: abrimos la pestaña AHORA MISMO (en blanco), mientras el
+    // clic del usuario todavía cuenta como "gesto de usuario" para el navegador.
+    // Si esperamos a que terminen las consultas a Supabase antes de abrir la
+    // ventana, el celular la bloquea y parece que la página se congeló.
+    var ventanaWhatsApp = window.open('', '_blank');
 
     try {
         // 1. GUARDAR EN LA TABLA DE PEDIDOS Y OBTENER EL CONSECUTIVO
@@ -1310,9 +1329,9 @@ async function procesarPedidoWhatsApp() {
             throw new Error('No se pudo registrar el pedido principal: ' + (errPedido?.message || 'Error desconocido'));
         }
 
-        const numeroPedido = nuevoPedido.id_pedido; // Este es tu número consecutivo automático
+        const numeroPedido = nuevoPedido.id_pedido;
 
-        // 2. LEER ARTÍCULOS DEL CARRITO PARA TRASPASARLOS
+        // 2. LEER ARTÍCULOS DEL CARRITO
         const { data: itemsCarrito, error: errCarrito } = await sb
             .from('carrito_items')
             .select('id_producto, id_combo, id_tamanio, cantidad, precio_unitario, observaciones')
@@ -1322,26 +1341,21 @@ async function procesarPedidoWhatsApp() {
             throw new Error('El carrito está vacío o no se pudo leer.');
         }
 
-        // 3. GUARDAR EL DETALLE DE CADA PRODUCTO/COMBO
-        for (const item of itemsCarrito) {
-            const { error: errDetalle } = await sb
-                .from('pedido_detalle')
-                .insert({
-                    id_pedido: numeroPedido,
-                    id_producto: item.id_producto || null,
-                    id_combo: item.id_combo || null,
-                    id_tamanio: item.id_tamanio || null,
-                    cantidad: item.cantidad,
-                    precio_unitario: item.precio_unitario,
-                    observaciones: item.observaciones
-                });
+        // 3. GUARDAR EL DETALLE — antes se insertaba uno por uno (lento); ahora en paralelo
+        const resultadosDetalle = await Promise.all(itemsCarrito.map(item =>
+            sb.from('pedido_detalle').insert({
+                id_pedido: numeroPedido,
+                id_producto: item.id_producto || null,
+                id_combo: item.id_combo || null,
+                id_tamanio: item.id_tamanio || null,
+                cantidad: item.cantidad,
+                precio_unitario: item.precio_unitario,
+                observaciones: item.observaciones
+            })
+        ));
+        resultadosDetalle.forEach(r => { if (r.error) console.error('Error insertando detalle:', r.error); });
 
-            if (errDetalle) {
-                console.error('Error insertando detalle:', errDetalle);
-            }
-        }
-
-        // 4. CONSTRUCCIÓN DEL MENSAJE DE WHATSAPP INCLUYENDO EL NÚMERO DE PEDIDO
+        // 4. CONSTRUCCIÓN DEL MENSAJE
         var mensaje = `¡Hola Le Crème! 🧁 *Confirmar Pedido #${numeroPedido}*\n\n`;
         document.querySelectorAll('.lc-cart-item-card').forEach(function (item) {
             let nombreProd = item.querySelector('h4').innerText;
@@ -1365,7 +1379,7 @@ async function procesarPedidoWhatsApp() {
         mensaje += '\n💰 Pago: ' + pago;
         mensaje += '\n💵 *Total final: ' + totalText + '*';
 
-        // 5. ENVIAR A WHATSAPP
+        // 5. OBTENER EL NÚMERO DE WHATSAPP
         const { data: config, error: errConfig } = await sb
             .from('lc_configuracion')
             .select('whatsapp_recepcion')
@@ -1373,19 +1387,31 @@ async function procesarPedidoWhatsApp() {
             .single();
 
         if (errConfig || !config) {
-            alert('No se pudo obtener el número de WhatsApp de la tienda.');
-            return;
+            throw new Error('No se pudo obtener el número de WhatsApp de la tienda.');
         }
 
         var numWhatsApp = (config.whatsapp_recepcion || '').replace(/\D/g, '');
-        window.open('https://wa.me/' + numWhatsApp + '?text=' + encodeURIComponent(mensaje), '_blank');
+        var urlWhatsApp = 'https://wa.me/' + numWhatsApp + '?text=' + encodeURIComponent(mensaje);
 
-        // 6. VACIAR CARRITO EN LA BASE DE DATOS Y FRONT
-        await vaciarCarritoTrasPedido(); 
-        
+        // 6. NAVEGAMOS LA PESTAÑA QUE YA TENÍAMOS ABIERTA (en vez de abrir una nueva ahora)
+        if (ventanaWhatsApp) {
+            ventanaWhatsApp.location.href = urlWhatsApp;
+        } else {
+            window.open(urlWhatsApp, '_blank'); // último recurso si el navegador bloqueó hasta la ventana en blanco
+        }
+
+        // 7. VACIAR CARRITO
+        await vaciarCarritoTrasPedido();
+
     } catch (err) {
+        if (ventanaWhatsApp) ventanaWhatsApp.close();
         console.error('Error general en el proceso de checkout:', err);
         alert('❌ Error al procesar el pedido: ' + err.message);
+    } finally {
+        if (btnCheckout) {
+            btnCheckout.disabled = false;
+            btnCheckout.innerText = textoOriginalBtn || 'Confirmar Pedido 📲';
+        }
     }
 }
 
