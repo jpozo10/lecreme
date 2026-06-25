@@ -1301,11 +1301,22 @@ async function procesarPedidoWhatsApp() {
         btnCheckout.innerText = 'Procesando...';
     }
 
-    // 🔑 CLAVE DEL FIX: abrimos la pestaña AHORA MISMO (en blanco), mientras el
-    // clic del usuario todavía cuenta como "gesto de usuario" para el navegador.
-    // Si esperamos a que terminen las consultas a Supabase antes de abrir la
-    // ventana, el celular la bloquea y parece que la página se congeló.
+    // 🔑 CLAVE DEL FIX: Abrimos la pestaña AHORA MISMO (en blanco) para guardar el gesto de usuario
     var ventanaWhatsApp = window.open('', '_blank');
+
+    // 🌟 OPTIMIZACIÓN: Le inyectamos un aviso temporal para que Android mantenga la pestaña viva y el usuario no vea una pantalla muerta
+    if (ventanaWhatsApp) {
+        ventanaWhatsApp.document.write(`
+            <html>
+                <head><title>Procesando Pedido...</title></head>
+                <body style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; color:#5A3A36; background:#FFF8F9; text-align:center; padding:20px;">
+                    <h2 style="margin-bottom:10px;">¡Ya casi listo! 🚀</h2>
+                    <p style="font-size:1.1rem; color:#A38A86;">Estamos registrando tu pedido en Le Crème...</p>
+                </body>
+            </html>
+        `);
+        ventanaWhatsApp.document.close(); // Cierra el flujo de escritura para que cargue bien
+    }
 
     try {
         // 1. GUARDAR EN LA TABLA DE PEDIDOS Y OBTENER EL CONSECUTIVO
@@ -1341,7 +1352,7 @@ async function procesarPedidoWhatsApp() {
             throw new Error('El carrito está vacío o no se pudo leer.');
         }
 
-        // 3. GUARDAR EL DETALLE — antes se insertaba uno por uno (lento); ahora en paralelo
+        // 3. GUARDAR EL DETALLE EN PARALELO
         const resultadosDetalle = await Promise.all(itemsCarrito.map(item =>
             sb.from('pedido_detalle').insert({
                 id_pedido: numeroPedido,
@@ -1393,11 +1404,12 @@ async function procesarPedidoWhatsApp() {
         var numWhatsApp = (config.whatsapp_recepcion || '').replace(/\D/g, '');
         var urlWhatsApp = 'https://wa.me/' + numWhatsApp + '?text=' + encodeURIComponent(mensaje);
 
-        // 6. NAVEGAMOS LA PESTAÑA QUE YA TENÍAMOS ABIERTA (en vez de abrir una nueva ahora)
-        if (ventanaWhatsApp) {
+        // 6. NAVEGAMOS LA PESTAÑA QUE YA TENÍAMOS ABIERTA
+        if (ventanaWhatsApp && !ventanaWhatsApp.closed) {
             ventanaWhatsApp.location.href = urlWhatsApp;
         } else {
-            window.open(urlWhatsApp, '_blank'); // último recurso si el navegador bloqueó hasta la ventana en blanco
+            // Fallback directo por si acaso la cerraron o falló el pop-up inicial
+            window.location.href = urlWhatsApp;
         }
 
         // 7. VACIAR CARRITO
