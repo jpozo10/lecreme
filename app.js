@@ -361,7 +361,7 @@ function limpiarUIGranizadosEnModal() {
     if (txtNotas) txtNotas.value = '';
 }
 
-function setModoModalParaCombo(combo) {
+async function setModoModalParaCombo(combo) {
     idProductoSeleccionado = null;
 
     const modalTitle = document.getElementById('modal-product-name');
@@ -394,41 +394,86 @@ function setModoModalParaCombo(combo) {
 
     if (containerToppings) containerToppings.innerHTML = '';
 
-    const requiereOpciones = !!(combo?.requiere_opciones === true || combo?.requiere_opciones === 'Y' || combo?.requiere_opciones === 'S');
-    const listaOpciones = (combo?.lista_opciones || '').split(',').map(x => String(x).trim()).filter(Boolean);
-    const cantidadOpciones = Math.max(1, parseInt(combo?.cantidad_opciones, 10) || 1);
+    // 🎯 NUEVA LÓGICA: Traer los grupos específicos de este combo
+    const { data: grupos, error } = await sb
+        .from('combo_grupos')
+        .select('*')
+        .eq('id_combo', combo.id_combo);
 
-    // 3. Mostrar y renderizar opciones dinámicas
-    if (requiereOpciones && containerToppings && listaOpciones.length > 0) {
+    if (error) {
+        console.error('Error cargando los grupos del combo:', error);
+    }
+
+    // 3. Mostrar y renderizar las opciones dinámicas por grupo
+    if (combo.requiere_opciones && grupos && grupos.length > 0 && containerToppings) {
         if (toppingsBlock) toppingsBlock.style.setProperty('display', 'block', 'important');
         if (tituloToppings) {
             tituloToppings.style.setProperty('display', 'block', 'important');
-            tituloToppings.innerText = `Elige tus opciones para ${combo.nombre}:`;
+            tituloToppings.innerText = `Personaliza tu ${combo.nombre}:`;
         }
 
         let html = '';
-        for (let i = 1; i <= cantidadOpciones; i++) {
+        
+        // Recorremos cada grupo independiente (Ej: Granizados, luego Sándwiches)
+        grupos.forEach((grupo, idx) => {
+            const opciones = grupo.lista_opciones.split(',').map(x => x.trim()).filter(Boolean);
+            const cant = Math.max(1, parseInt(grupo.cantidad_seleccionar, 10) || 1);
+
             html += `
-<div style="margin-top:10px; width:100%;">
-    <label style="font-weight:700; color:#6D3B37; font-size:0.9rem; display:block;">Opción ${i}</label>
-    <select class="lc-combo-opciones-select" data-pos="${i}" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px; display:block !important;">
-        <option value="">-- Selecciona un sabor --</option>
-        ${listaOpciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
-    </select>
-</div>`;
-        }
+            <div class="bloque-grupo-tienda" data-nombre-grupo="${escapeHtml(grupo.nombre_grupo)}" style="margin-top:15px; width:100%; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
+                <label style="font-weight:700; color:#6D3B37; font-size:0.95rem; display:block;">
+                    ${escapeHtml(grupo.nombre_grupo)} <span style="font-weight:400; color:#718096; font-size:0.8rem;">(Selecciona ${cant})</span>
+                </label>`;
+
+            // Si solo debe elegir 1 opción en este grupo, pintamos 1 select limpio
+            if (cant === 1) {
+                html += `
+                <select class="lc-combo-grupo-select" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px; display:block !important;">
+                    <option value="">-- Selecciona una opción --</option>
+                    ${opciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+                </select>`;
+            } 
+            // Si debe elegir más de una opción, pintamos checkboxes dinámicos
+            else {
+                html += `<div style="margin-top: 6px;">`;
+                opciones.forEach(o => {
+                    html += `
+                    <label style="display:block; margin-bottom:5px; font-weight:400; font-size:0.9rem; cursor:pointer;">
+                        <input type="checkbox" class="lc-combo-grupo-chk" data-max="${cant}" data-grupo-idx="${idx}" value="${escapeHtml(o)}" onchange="validarMaximoCheckboxesTienda(this)" style="margin-right:6px;">
+                        ${escapeHtml(o)}
+                    </label>`;
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+        });
 
         containerToppings.innerHTML = html;
-        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO_DYNAMIC', cantidad: cantidadOpciones };
+        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO_DYNAMIC' };
     } else {
         if (toppingsBlock) toppingsBlock.style.setProperty('display', 'none', 'important');
-        if (tituloToppings) tituloToppings.style.setProperty('display', 'none', 'important');
-        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO3', cantidad: 0 };
+        if (tituloToppings) {
+            tituloToppings.style.setProperty('display', 'none', 'important');
+            comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO3' };
+        }
     }
 
     // 4. Setear precio definitivo
     const txtTotal = document.getElementById('modal-total-price');
     if (txtTotal) txtTotal.innerText = `$${formatearPrecio(combo.precio_descuento)}`;
+}
+
+// 👀 Función auxiliar para controlar que no marquen más checkboxes de los permitidos por grupo
+function validarMaximoCheckboxesTienda(el) {
+    const idx = el.dataset.grupoIdx;
+    const max = parseInt(el.dataset.max, 10);
+    const seleccionados = document.querySelectorAll(`.lc-combo-grupo-chk[data-grupo-idx="${idx}"]:checked`);
+    
+    if (seleccionados.length > max) {
+        el.checked = false;
+        alert(`Solo puedes seleccionar hasta ${max} opciones en esta sección.`);
+    }
 }
 
 
@@ -447,22 +492,43 @@ async function guardarComboConGranizadosEnCarrito() {
         return;
     }
 
-    // Validación para combos dinámicos: renderizamos N selects (cantidad_opciones)
-    const cantidadOpciones = Math.max(1, parseInt(combo?.cantidad_opciones, 10) || 1);
+    // 🎯 NUEVA VALIDACIÓN: Recorrer cada bloque de grupo renderizado
+    const bloques = document.querySelectorAll('#modal-toppings-container .bloque-grupo-tienda');
+    let resumenElecciones = [];
 
-    const opcionesSeleccionadas = [];
-    for (let i = 1; i <= cantidadOpciones; i++) {
-        const sel = document.querySelector(`#modal-toppings-container select.lc-combo-opciones-select[data-pos="${i}"]`);
-        const v = sel?.value ? String(sel.value).trim() : '';
-        if (!v) {
-            alert(`Debes seleccionar la opción ${i} para ${combo.nombre}.`);
-            return;
+    for (const bloque of bloques) {
+        const nombreGrupo = bloque.dataset.nombreGrupo;
+        let eleccionesGrupo = [];
+
+        // Mirar si tiene un select sencillo
+        const select = bloque.querySelector('.lc-combo-grupo-select');
+        if (select) {
+            const v = select.value.trim();
+            if (!v) {
+                alert(`Por favor, completa la sección: "${nombreGrupo}".`);
+                return;
+            }
+            eleccionesGrupo.push(v);
+        } 
+        // Mirar si tiene checkboxes múltiples
+        else {
+            const chks = bloque.querySelectorAll('.lc-combo-grupo-chk:checked');
+            const chkTodos = bloque.querySelectorAll('.lc-combo-grupo-chk');
+            const maxPermitido = chkTodos.length > 0 ? parseInt(chkTodos[0].dataset.max, 10) : 1;
+
+            if (chks.length < maxPermitido) {
+                alert(`Por favor, selecciona las ${maxPermitido} opciones requeridas en: "${nombreGrupo}".`);
+                return;
+            }
+            chks.forEach(c => eleccionesGrupo.push(c.value));
         }
-        opcionesSeleccionadas.push(v);
+
+        // Armamos la línea legible del grupo, ej: "Sándwich: Especial" o "Granizados: Mora, Lulo"
+        resumenElecciones.push(`${nombreGrupo}: ${eleccionesGrupo.join(', ')}`);
     }
 
-    // Formatear automáticamente en observaciones
-    const obsGran = `Granizados: ${opcionesSeleccionadas.join(', ')}`;
+    // Unimos todas las elecciones de los grupos con un separador limpio
+    const obsGran = resumenElecciones.join(' | ');
 
     const txtNotas = document.getElementById('modal-observaciones');
     const notasGenerales = txtNotas?.value?.trim() ? txtNotas.value.trim() : '';
@@ -527,7 +593,8 @@ async function agregarComboAlCarrito(idCombo) {
     comboSeleccionadoGranizados = null;
 
     // Render blindado del modal (combo) y abrir modal
-    setModoModalParaCombo(combo);
+    // Agregamos el await obligatorio aquí arriba 🏁
+    await setModoModalParaCombo(combo);
 
     const modal = document.getElementById('lc-topping-modal');
     if (modal) {
