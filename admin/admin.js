@@ -789,15 +789,6 @@ async function abrirModalEditarCombo(id) {
     actualizarVistaPrevia(m, combo.imagen || '');
 }
 
-
-// 👁️ ESCUCHADOR DE DELEGACIÓN GLOBAL (Llama a tu función original sin pisar nada)
-document.addEventListener('click', function (e) {
-    if (e.target && e.target.id === 'btn-guardar-combo') {
-        e.preventDefault(); 
-        guardarCombo(); // Ejecuta tu función de siempre
-    }
-});
-
 async function guardarCombo() {
     const id = parseInt(document.getElementById('form-combo-id').value, 10) || 0;
     const nombre = document.getElementById('form-combo-nombre').value.trim();
@@ -808,16 +799,19 @@ async function guardarCombo() {
 
     const imagen = obtenerImagenFinal('modal-combo');
 
-    // Captura limpia del select del HTML
+    // 👁️ CORRECCIÓN CLAVE: Evaluamos tanto el value ('S') como el texto plano ('Sí') por si tu HTML varió
     const selectRequiere = document.getElementById('item-requiere-opciones');
-    const requiere_opciones = selectRequiere ? (selectRequiere.value === 'S') : false;
+    let requiere_opciones = false;
+    if (selectRequiere) {
+        const val = selectRequiere.value.trim();
+        requiere_opciones = (val === 'S' || val === 'Sí' || val === 'si');
+    }
     
-    // Si requiere opciones (S), guarda el texto; si no, manda null estricto
+    // Captura los valores basándose en la bandera corregida
     const lista_opciones = requiere_opciones 
         ? (document.getElementById('item-lista-opciones')?.value?.trim() || null)
         : null;
 
-    // Si requiere opciones, toma el número; si no, lo obliga a ser 0
     const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
     const cantidad_opciones = requiere_opciones 
         ? Math.max(1, parseInt(cantidad_opciones_el?.value, 10) || 1) 
@@ -835,9 +829,9 @@ async function guardarCombo() {
         descripcion: descripcion,
         activo: activo,
         imagen: imagen || null,
-        requiere_opciones: requiere_opciones, // Boolean real
-        lista_opciones: lista_opciones,       // String o null limpio
-        cantidad_opciones: cantidad_opciones  // Número exacto (0 si es false)
+        requiere_opciones: requiere_opciones, 
+        lista_opciones: lista_opciones,    
+        cantidad_opciones: cantidad_opciones  
     };
 
     try {
@@ -865,9 +859,6 @@ async function guardarCombo() {
         admToast('Error al guardar: ' + err.message, 'error');
     }
 }
-
-// 👁️ LÍNEA CRÍTICA: Vincula a la fuerza el botón de tu HTML con esta función corregida
-document.getElementById('btn-guardar-combo').onclick = guardarCombo;
 
 async function eliminarCombo(id) {
     if (!admConfirmar('¿Seguro que deseas eliminar este combo?')) return;
