@@ -134,64 +134,7 @@
   <!-- ============================================================ -->
   <!-- MODAL: CATEGORÍA -->
   <!-- ============================================================ -->
-  <div id="modal-categoria" class="adm-modal-v2" data-carpeta-storage="Categorias">
-    <div class="adm-modal-content-v2">
-      <div class="adm-modal-header">
-        <h4 id="lbl-cat-titulo">Editar Categoría</h4>
-        <span class="adm-close-btn data-cerrar" data-modal="modal-categoria">&times;</span>
-      </div>
-      <input type="hidden" id="form-cat-id">
-
-      <div class="adm-form-group">
-        <label>Nombre:</label>
-        <input type="text" id="form-cat-nombre" class="adm-form-control">
-      </div>
-      <div class="adm-form-group">
-        <label>Orden Banner:</label>
-        <input type="number" id="form-cat-orden" class="adm-form-control">
-      </div>
-
-      <div class="adm-form-group">
-        <label>Origen Icono / Imagen:</label>
-        <div class="img-tab-bar">
-          <button type="button" class="img-tab-btn active" data-target="cat-src-url">🌐 URL</button>
-          <button type="button" class="img-tab-btn" data-target="cat-src-file">📁 Subir Archivo</button>
-        </div>
-        <div id="cat-src-url" class="img-tab-content active">
-          <input type="text" id="form-cat-img" class="adm-form-control input-ruta-real" placeholder="https://ejemplo.com/icono.png">
-        </div>
-        <div id="cat-src-file" class="img-tab-content">
-          <input type="file" class="adm-file-input-nativa" accept="image/*">
-          <p class="adm-upload-status"></p>
-        </div>
-        <div class="adm-img-preview-box"><img src="https://i.imgur.com/LohlUtN.png"></div>
-      </div>
-
-      <div class="adm-form-group">
-        <label>Estado:</label>
-        <select id="form-cat-activo" class="adm-form-control">
-          <option value="S">🟢 Activa</option>
-          <option value="N">🔴 Desactivar</option>
-        </select>
-      </div>
-      <div class="adm-form-group">
-        <label>¿Lleva Toppings?:</label>
-        <select id="form-cat-toppings" class="adm-form-control">
-          <option value="S">Sí, permitir toppings</option>
-          <option value="N">No, deshabilitar toppings</option>
-        </select>
-      </div>
-
-      <div class="adm-btn-guardar-wrapper">
-        <button type="button" class="adm-btn-primary" id="btn-guardar-cat">Guardar Categoría</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================ -->
-  <!-- MODAL: PRODUCTO -->
-  <!-- ============================================================ -->
-  <div id="modal-producto" class="adm-modal-v2" data-carpeta-storage="Productos">
+<div id="modal-producto" class="adm-modal-v2" data-carpeta-storage="Productos">
     <div class="adm-modal-content-v2">
       <div class="adm-modal-header">
         <h4 id="lbl-prod-titulo">Editar Producto</h4>
@@ -266,6 +209,88 @@
 
       <div class="adm-btn-guardar-wrapper">
         <button type="button" class="adm-btn-primary" id="btn-guardar-prod">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-combo" class="adm-modal-v2" data-carpeta-storage="Combos">
+    <div class="adm-modal-content-v2" style="max-width:550px;">
+      <div class="adm-modal-header">
+        <h4 id="lbl-combo-titulo">Crear Nuevo Combo</h4>
+        <span class="adm-close-btn data-cerrar" data-modal="modal-combo">&times;</span>
+      </div>
+      <input type="hidden" id="form-combo-id">
+
+      <div class="adm-form-group">
+        <label>Nombre del Combo:</label>
+        <input type="text" id="form-combo-nombre" class="adm-form-control">
+      </div>
+
+      <div class="adm-form-group">
+        <label>📦 Selecciona los Productos del Combo:</label>
+        <input type="text" id="buscar-prod-combo" class="adm-form-control" placeholder="🔍 Buscar producto por nombre..." style="margin-bottom:8px;">
+        <div class="combo-productos-lista" id="combo-productos-lista"></div>
+      </div>
+
+      <div class="adm-form-group">
+        <label>Precio Regular Sumado ($):</label>
+        <input type="number" id="form-combo-normal" class="adm-form-control" readonly style="background:#e2e8f0; font-weight:bold; color:#475569;" placeholder="Se calcula automáticamente">
+      </div>
+      <div class="adm-form-group">
+        <label>Precio de Oferta Combo ($):</label>
+        <input type="number" id="form-combo-descuento" class="adm-form-control" placeholder="Ej: 15000">
+      </div>
+
+      <div class="adm-form-group">
+        <label>¿Requiere opciones dinámicas?:</label>
+        <select id="combo-requiere-opciones" class="adm-form-control" onchange="conmutarGruposCombo()">
+          <option value="N">No</option>
+          <option value="S">Sí</option>
+        </select>
+      </div>
+
+      <div id="seccion-grupos-combo" style="display: none; margin-top: 15px; border-left: 3px solid #e1a1a1; padding-left: 15px;">
+        <label style="font-weight: bold; color: #6D3B37;">📋 Grupos de Elección para este Combo:</label>
+        
+        <div id="contenedor-grupos-inputs" style="margin-top: 10px;">
+          </div>
+
+        <button type="button" class="adm-btn-primary" onclick="agregarFilaGrupoOpcion('', 1, '')" style="background:#4a5568; padding:6px 12px; font-size:0.75rem; margin-top:8px; display: block;">
+          ➕ Agregar Otro Grupo de Elección
+        </button>
+      </div>
+
+      <div class="adm-form-group" style="margin-top: 15px;">
+        <label>Descripción del Combo:</label>
+        <input type="text" id="form-combo-desc" class="adm-form-control" placeholder="Ej: Lleva 2 porciones + 1 bebida...">
+      </div>
+
+      <div class="adm-form-group">
+        <label>Origen Imagen del Combo:</label>
+        <div class="img-tab-bar">
+          <button type="button" class="img-tab-btn active" data-target="combo-src-url">🌐 URL</button>
+          <button type="button" class="img-tab-btn" data-target="combo-src-file">📁 Subir Archivo</button>
+        </div>
+        <div id="combo-src-url" class="img-tab-content active">
+          <input type="text" id="form-combo-img" class="adm-form-control input-ruta-real" placeholder="https://ejemplo.com/combo.jpg">
+        </div>
+        <div id="combo-src-file" class="img-tab-content">
+          <input type="file" class="adm-file-input-nativa" accept="image/*">
+          <p class="adm-upload-status"></p>
+        </div>
+        <div class="adm-img-preview-box"><img src="https://i.imgur.com/LohlUtN.png"></div>
+      </div>
+
+      <div class="adm-form-group">
+        <label>Visibilidad en la tienda:</label>
+        <select id="form-combo-activo" class="adm-form-control">
+          <option value="S">🟢 Mostrar a clientes</option>
+          <option value="N">🔴 Ocultar</option>
+        </select>
+      </div>
+
+      <div class="adm-btn-guardar-wrapper">
+        <button type="button" class="adm-btn-primary" id="btn-guardar-combo">Guardar Combo</button>
       </div>
     </div>
   </div>
