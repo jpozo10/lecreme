@@ -800,16 +800,24 @@ async function guardarCombo() {
 
     const imagen = obtenerImagenFinal('modal-combo');
 
-    const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S';
+    // Forzamos la lectura limpia del select del HTML
+    const selectRequiere = document.getElementById('item-requiere-opciones');
+    const requiere_opciones = selectRequiere ? (selectRequiere.value === 'S') : false;
+    
     const lista_opciones = requiere_opciones 
         ? (document.getElementById('item-lista-opciones')?.value?.trim() || null)
         : null;
 
-    // 👁️ SÍNCRO CON TU HTML: Lee correctamente desde 'combo-cantidad-opciones'
     const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
     const cantidad_opciones = requiere_opciones 
         ? Math.max(1, parseInt(cantidad_opciones_el?.value, 10) || 1) 
         : 0;
+
+    // 👁️ CONTROL: Abre la consola del navegador (F12) al guardar para ver si el JS nuevo está corriendo
+    console.log("--- DATOS A ENVIAR A SUPABASE ---");
+    console.log("requiere_opciones (Debe ser true):", requiere_opciones);
+    console.log("lista_opciones:", lista_opciones);
+    console.log("cantidad_opciones:", cantidad_opciones);
 
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
@@ -823,9 +831,9 @@ async function guardarCombo() {
         descripcion,
         activo,
         imagen: imagen || null,
-        requiere_opciones, // Guarda boolean puro (true/false)
-        lista_opciones,    // Guarda string limpio o null
-        cantidad_opciones  // Guarda número exacto (o 0 si es false)
+        requiere_opciones, 
+        lista_opciones,    
+        cantidad_opciones  
     };
 
     try {
@@ -853,6 +861,9 @@ async function guardarCombo() {
         admToast('Error al guardar: ' + err.message, 'error');
     }
 }
+
+// 👁️ LÍNEA CRÍTICA: Vincula a la fuerza el botón de tu HTML con esta función corregida
+document.getElementById('btn-guardar-combo').onclick = guardarCombo;
 
 async function eliminarCombo(id) {
     if (!admConfirmar('¿Seguro que deseas eliminar este combo?')) return;
