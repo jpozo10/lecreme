@@ -1,3 +1,8 @@
+// ============================================================
+//  LE CRÈME — admin.js
+//  Panel de administración migrado de Oracle APEX a Supabase.
+//  Usa el cliente global `sb` definido en ../config.js
+// ============================================================
 
 const BUCKET_NAME = 'Menu';
 const FALLBACK_IMG = 'https://i.imgur.com/LohlUtN.png';
@@ -739,6 +744,10 @@ function abrirModalNuevoCombo() {
     const listaEl = document.getElementById('item-lista-opciones');
     if (listaEl) listaEl.value = '';
 
+    // 👁️ SÍNCRO CON TU HTML: Reinicia el input a '1'
+    const cantidadEl = document.getElementById('combo-cantidad-opciones');
+    if (cantidadEl) cantidadEl.value = '1';
+
     renderizarListaProductosCombo([]);
     m.classList.add('active');
     inicializarPestanasImagen(m);
@@ -760,11 +769,16 @@ async function abrirModalEditarCombo(id) {
     document.getElementById('form-combo-img').value = combo.imagen || '';
     document.getElementById('buscar-prod-combo').value = '';
 
-    // Opciones dinámicas (requiere_opciones, lista_opciones)
     const requiereEl = document.getElementById('item-requiere-opciones');
     if (requiereEl) requiereEl.value = combo.requiere_opciones ? 'S' : 'N';
     const listaEl = document.getElementById('item-lista-opciones');
     if (listaEl) listaEl.value = combo.lista_opciones || '';
+
+    // 👁️ SÍNCRO CON TU HTML: Carga el valor correcto guardado en Supabase
+    const cantidadEl = document.getElementById('combo-cantidad-opciones');
+    if (cantidadEl) {
+        cantidadEl.value = combo.cantidad_opciones || (combo.requiere_opciones ? '1' : '0');
+    }
 
     const { data: relaciones } = await sb.from('combo_productos').select('id_producto').eq('id_combo', id);
     const idsSeleccionados = (relaciones || []).map(r => r.id_producto);
@@ -784,16 +798,18 @@ async function guardarCombo() {
     const descripcion = document.getElementById('form-combo-desc').value.trim();
     const activo = document.getElementById('form-combo-activo').value;
 
-    // Importante: el value real de la URL pública debe estar en el input .input-ruta-real
-    // (la subida ocurre en el listener global de change). Si el usuario subió archivo, ahí quedará la URL.
     const imagen = obtenerImagenFinal('modal-combo');
 
-    const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S' ? true : false;
-    const lista_opciones = document.getElementById('item-lista-opciones')?.value?.trim() || null;
+    const requiere_opciones = document.getElementById('item-requiere-opciones')?.value === 'S';
+    const lista_opciones = requiere_opciones 
+        ? (document.getElementById('item-lista-opciones')?.value?.trim() || null)
+        : null;
 
-    // Nuevo: cantidad exacta de selecciones que debe hacer el cliente
+    // 👁️ SÍNCRO CON TU HTML: Lee correctamente desde 'combo-cantidad-opciones'
     const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
-    const cantidad_opciones = cantidad_opciones_el ? Math.max(1, parseInt(cantidad_opciones_el.value, 10) || 1) : 1;
+    const cantidad_opciones = requiere_opciones 
+        ? Math.max(1, parseInt(cantidad_opciones_el?.value, 10) || 1) 
+        : 0;
 
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
@@ -807,9 +823,9 @@ async function guardarCombo() {
         descripcion,
         activo,
         imagen: imagen || null,
-        requiere_opciones,
-        lista_opciones,
-        cantidad_opciones
+        requiere_opciones, // Guarda boolean puro (true/false)
+        lista_opciones,    // Guarda string limpio o null
+        cantidad_opciones  // Guarda número exacto (o 0 si es false)
     };
 
     try {
