@@ -739,15 +739,20 @@ function abrirModalNuevoCombo() {
     document.getElementById('form-combo-img').value = '';
     document.getElementById('buscar-prod-combo').value = '';
 
+    // 🎯 NUEVA LÓGICA DE GRUPOS DINÁMICOS:
+    // 1. Forzamos el select de requerir opciones a 'No'
     const requiereEl = document.getElementById('combo-requiere-opciones');
     if (requiereEl) requiereEl.value = 'N';
-    const listaEl = document.getElementById('combo-lista-opciones');
-    if (listaEl) listaEl.value = '';
 
-    // 👁️ SÍNCRO CON TU HTML: Reinicia el input a '1'
-    const cantidadEl = document.getElementById('combo-cantidad-opciones');
-    if (cantidadEl) cantidadEl.value = '1';
+    // 2. Vaciamos por completo el contenedor donde se acumulan las filas de grupos
+    const contenedorGrupos = document.getElementById('contenedor-grupos-inputs');
+    if (contenedorGrupos) contenedorGrupos.innerHTML = '';
 
+    // 3. Ocultamos la sección de los grupos en la interfaz
+    const seccionGrupos = document.getElementById('seccion-grupos-combo');
+    if (seccionGrupos) seccionGrupos.style.display = 'none';
+
+    // Estado inicial de productos y modal
     renderizarListaProductosCombo([]);
     m.classList.add('active');
     inicializarPestanasImagen(m);
@@ -769,17 +774,34 @@ async function abrirModalEditarCombo(id) {
     document.getElementById('form-combo-img').value = combo.imagen || '';
     document.getElementById('buscar-prod-combo').value = '';
 
-    const requiereEl = document.getElementById('combo-requiere-opciones');
-    if (requiereEl) requiereEl.value = combo.requiere_opciones ? 'S' : 'N';
-    const listaEl = document.getElementById('combo-lista-opciones');
-    if (listaEl) listaEl.value = combo.lista_opciones || '';
+    // 🎯 NUEVA LÓGICA DE GRUPOS DINÁMICOS:
+    // Limpiamos el contenedor primero
+    const contenedorGrupos = document.getElementById('contenedor-grupos-inputs');
+    if (contenedorGrupos) contenedorGrupos.innerHTML = '';
 
-    // 👁️ SÍNCRO CON TU HTML: Carga el valor correcto guardado en Supabase
-    const cantidadEl = document.getElementById('combo-cantidad-opciones');
-    if (cantidadEl) {
-        cantidadEl.value = combo.cantidad_opciones || (combo.requiere_opciones ? '1' : '0');
+    // Consultamos los grupos de opciones asociados a este combo en Supabase
+    const { data: grupos, error: errGrupos } = await sb
+        .from('combo_grupos')
+        .select('*')
+        .eq('id_combo', id);
+
+    const requiereEl = document.getElementById('combo-requiere-opciones');
+    const seccionGrupos = document.getElementById('seccion-grupos-combo');
+
+    if (grupos && grupos.length > 0) {
+        if (requiereEl) requiereEl.value = 'S';
+        if (seccionGrupos) seccionGrupos.style.display = 'block';
+        
+        // Inyectamos una fila por cada grupo guardado en la base de datos
+        grupos.forEach(g => {
+            agregarFilaGrupoOpcion(g.nombre_grupo, g.cantidad_seleccionar, g.lista_opciones);
+        });
+    } else {
+        if (requiereEl) requiereEl.value = 'N';
+        if (seccionGrupos) seccionGrupos.style.display = 'none';
     }
 
+    // Cargar los productos seleccionados (Tu lógica relacional intacta)
     const { data: relaciones } = await sb.from('combo_productos').select('id_producto').eq('id_combo', id);
     const idsSeleccionados = (relaciones || []).map(r => r.id_producto);
     renderizarListaProductosCombo(idsSeleccionados);
@@ -799,6 +821,7 @@ async function guardarCombo() {
 
     const imagen = obtenerImagenFinal('modal-combo');
 
+    // Control de bandera principal
     const selectRequiere = document.getElementById('combo-requiere-opciones');
     let requiere_opciones = false;
     if (selectRequiere) {
@@ -806,51 +829,76 @@ async function guardarCombo() {
         requiere_opciones = (val === 'S' || val === 'Sí' || val === 'si');
     }
 
-    const lista_opciones = requiere_opciones
-        ? (document.getElementById('combo-lista-opciones')?.value?.trim() || null)
-        : null;
-
-    const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
-    const cantidad_opciones = requiere_opciones 
-        ? Math.max(1, parseInt(cantidad_opciones_el?.value, 10) || 1) 
-        : 0;
-
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
     if (!nombre) { admToast('El nombre del combo es obligatorio.', 'error'); return; }
     if (productosSeleccionados.length === 0) { admToast('Selecciona al menos un producto para el combo.', 'error'); return; }
 
-    const payload = {
+    // El payload del combo base ya no lleva ni lista ni cantidad global
+    const payloadCombo = {
         nombre: nombre,
         precio_normal: normal,
         precio_descuento: descuento,
         descripcion: descripcion,
         activo: activo,
         imagen: imagen || null,
-        requiere_opciones: requiere_opciones, 
-        lista_opciones: lista_opciones,    
-        cantidad_opciones: cantidad_opciones  
+        requiere_opciones: requiere_opciones 
     };
 
     try {
         let idCombo = id;
+        
+        // 1. Guardar o actualizar datos en la tabla principal 'combos'
         if (id > 0) {
-            const { error } = await sb.from('combos').update(payload).eq('id_combo', id);
+            const { error } = await sb.from('combos').update(payloadCombo).eq('id_combo', id);
             if (error) throw error;
         } else {
-            const { data, error } = await sb.from('combos').insert(payload).select().single();
+            const { data, error } = await sb.from('combos').insert(payloadCombo).select().single();
             if (error) throw error;
             idCombo = data.id_combo;
         }
 
+        // 2. Actualizar la relación de productos incluidos en el combo
         await sb.from('combo_productos').delete().eq('id_combo', idCombo);
         const { error: errRel } = await sb.from('combo_productos').insert(
             productosSeleccionados.map(idProd => ({ id_combo: idCombo, id_producto: idProd }))
         );
         if (errRel) throw errRel;
 
+        // 3. 🎯 NUEVA LÓGICA: GUARDAR LOS GRUPOS DINÁMICOS
+        // Primero eliminamos los grupos anteriores para no dejar basura ni duplicar
+        await sb.from('combo_grupos').delete().eq('id_combo', idCombo);
+
+        if (requiere_opciones) {
+            // Mapeamos todas las filas creadas dinámicamente en el HTML
+            const filas = document.querySelectorAll('.fila-grupo-input');
+            const arrayGrupos = [];
+
+            filas.forEach(fila => {
+                const nomG = fila.querySelector('.input-grupo-nombre')?.value.trim();
+                const cantG = parseInt(fila.querySelector('.input-grupo-cantidad')?.value, 10) || 1;
+                const opcG = fila.querySelector('.input-grupo-opciones')?.value.trim();
+
+                // Solo lo tenemos en cuenta si el usuario digitó el nombre y las opciones
+                if (nomG && opcG) {
+                    arrayGrupos.push({
+                        id_combo: idCombo,
+                        nombre_grupo: nomG,
+                        cantidad_seleccionar: cantG,
+                        lista_opciones: opcG
+                    });
+                }
+            });
+
+            // Si hay grupos válidos estructurados, los insertamos en lote (bulk insert)
+            if (arrayGrupos.length > 0) {
+                const { error: errG } = await sb.from('combo_grupos').insert(arrayGrupos);
+                if (errG) throw errG;
+            }
+        }
+
         document.getElementById('modal-combo').classList.remove('active');
-        admToast('Combo guardado correctamente 🎁');
+        admToast('Combo y sus grupos dinámicos guardados correctamente 🎁');
         await cargarCombos();
     } catch (err) {
         console.error(err);
@@ -869,6 +917,30 @@ async function eliminarCombo(id) {
         console.error(err);
         admToast('No se pudo eliminar el combo.', 'error');
     }
+}
+
+function conmutarGruposCombo() {
+    const requiere = document.getElementById('combo-requiere-opciones').value === 'S';
+    document.getElementById('seccion-grupos-combo').style.display = requiere ? 'block' : 'none';
+    if (requiere && document.getElementById('contenedor-grupos-inputs').children.length === 0) {
+        // Agrega una fila vacía por defecto para ahorrarle un clic al usuario
+        agregarFilaGrupoOpcion('', 1, '');
+    }
+}
+
+function agregarFilaGrupoOpcion(nombre = '', cantidad = 1, opciones = '') {
+    const contenedor = document.getElementById('contenedor-grupos-inputs');
+    const divFila = document.createElement('div');
+    divFila.className = 'fila-grupo-input';
+    divFila.style = 'display: flex; gap: 10px; margin-bottom: 10px; align-items: center;';
+    
+    divFila.innerHTML = `
+        <input type="text" placeholder="Ej: Elige tu Sándwich" class="adm-form-control input-grupo-nombre" value="${nombre}" style="flex: 2;">
+        <input type="number" min="1" placeholder="Cant" class="adm-form-control input-grupo-cantidad" value="${cantidad}" style="flex: 0.5;">
+        <input type="text" placeholder="Opciones (Mora, Fresa, Lulo)" class="adm-form-control input-grupo-opciones" value="${opciones}" style="flex: 4;">
+        <button type="button" onclick="this.parentElement.remove()" style="background:red; color:white; border:none; border-radius:4px; padding: 5px 10px; cursor:pointer;">❌</button>
+    `;
+    contenedor.appendChild(divFila);
 }
 
 // ─────────────────────────────────────────────────────────
