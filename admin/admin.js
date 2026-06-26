@@ -739,9 +739,9 @@ function abrirModalNuevoCombo() {
     document.getElementById('form-combo-img').value = '';
     document.getElementById('buscar-prod-combo').value = '';
 
-    const requiereEl = document.getElementById('item-requiere-opciones');
+    const requiereEl = document.getElementById('combo-requiere-opciones');
     if (requiereEl) requiereEl.value = 'N';
-    const listaEl = document.getElementById('item-lista-opciones');
+    const listaEl = document.getElementById('combo-lista-opciones');
     if (listaEl) listaEl.value = '';
 
     // 👁️ SÍNCRO CON TU HTML: Reinicia el input a '1'
@@ -769,9 +769,9 @@ async function abrirModalEditarCombo(id) {
     document.getElementById('form-combo-img').value = combo.imagen || '';
     document.getElementById('buscar-prod-combo').value = '';
 
-    const requiereEl = document.getElementById('item-requiere-opciones');
+    const requiereEl = document.getElementById('combo-requiere-opciones');
     if (requiereEl) requiereEl.value = combo.requiere_opciones ? 'S' : 'N';
-    const listaEl = document.getElementById('item-lista-opciones');
+    const listaEl = document.getElementById('combo-lista-opciones');
     if (listaEl) listaEl.value = combo.lista_opciones || '';
 
     // 👁️ SÍNCRO CON TU HTML: Carga el valor correcto guardado en Supabase
@@ -799,17 +799,15 @@ async function guardarCombo() {
 
     const imagen = obtenerImagenFinal('modal-combo');
 
-    // 👁️ CORRECCIÓN CLAVE: Evaluamos tanto el value ('S') como el texto plano ('Sí') por si tu HTML varió
-    const selectRequiere = document.getElementById('item-requiere-opciones');
+    const selectRequiere = document.getElementById('combo-requiere-opciones');
     let requiere_opciones = false;
     if (selectRequiere) {
         const val = selectRequiere.value.trim();
         requiere_opciones = (val === 'S' || val === 'Sí' || val === 'si');
     }
-    
-    // Captura los valores basándose en la bandera corregida
-    const lista_opciones = requiere_opciones 
-        ? (document.getElementById('item-lista-opciones')?.value?.trim() || null)
+
+    const lista_opciones = requiere_opciones
+        ? (document.getElementById('combo-lista-opciones')?.value?.trim() || null)
         : null;
 
     const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
