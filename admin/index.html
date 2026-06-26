@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Le Creme — Admin V2</title>
+  <title>Le Creme — Admin</title>
   <link rel="stylesheet" href="/lecreme/admin/admin.css">
 
   <link rel="icon" type="image/png" sizes="16x16" href="https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/favicon-16x16.png">
@@ -302,13 +302,12 @@
       </div>
       <div class="adm-form-group">
         <label>¿Requiere opciones dinámicas?:</label>
-        <select id="item-requiere-opciones" class="adm-form-control">
+        <select id="combo-requiere-opciones" class="adm-form-control">
           <option value="N">No</option>
           <option value="S">Sí</option>
         </select>
       </div>
 
-      <!-- NUEVO: cantidad exacta de selecciones a pedir al cliente -->
       <div class="adm-form-group">
         <label>Cantidad de opciones a seleccionar (combo):</label>
         <input type="number" id="combo-cantidad-opciones" class="adm-form-control" min="1" value="1">
@@ -316,7 +315,7 @@
 
       <div class="adm-form-group">
         <label>Lista de opciones (separadas por comas):</label>
-        <input type="text" id="item-lista-opciones" class="adm-form-control" placeholder="Ej: Fresa, Mora, Maracuyá">
+        <input type="text" id="combo-lista-opciones" class="adm-form-control" placeholder="Ej: Fresa, Mora, Maracuyá">
       </div>
 
       <div class="adm-form-group">
