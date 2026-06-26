@@ -790,8 +790,16 @@ async function abrirModalEditarCombo(id) {
 }
 
 
+// 👁️ ESCUCHADOR DE DELEGACIÓN GLOBAL (Llama a tu función original sin pisar nada)
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'btn-guardar-combo') {
+        e.preventDefault(); 
+        guardarCombo(); // Ejecuta tu función de siempre
+    }
+});
+
 async function guardarCombo() {
-    const id = parseInt(document.getElementById('form-combo-id').value, 10);
+    const id = parseInt(document.getElementById('form-combo-id').value, 10) || 0;
     const nombre = document.getElementById('form-combo-nombre').value.trim();
     const normal = Number(document.getElementById('form-combo-normal').value) || 0;
     const descuento = Number(document.getElementById('form-combo-descuento').value) || 0;
@@ -800,24 +808,20 @@ async function guardarCombo() {
 
     const imagen = obtenerImagenFinal('modal-combo');
 
-    // Forzamos la lectura limpia del select del HTML
+    // Captura limpia del select del HTML
     const selectRequiere = document.getElementById('item-requiere-opciones');
     const requiere_opciones = selectRequiere ? (selectRequiere.value === 'S') : false;
     
+    // Si requiere opciones (S), guarda el texto; si no, manda null estricto
     const lista_opciones = requiere_opciones 
         ? (document.getElementById('item-lista-opciones')?.value?.trim() || null)
         : null;
 
+    // Si requiere opciones, toma el número; si no, lo obliga a ser 0
     const cantidad_opciones_el = document.getElementById('combo-cantidad-opciones');
     const cantidad_opciones = requiere_opciones 
         ? Math.max(1, parseInt(cantidad_opciones_el?.value, 10) || 1) 
         : 0;
-
-    // 👁️ CONTROL: Abre la consola del navegador (F12) al guardar para ver si el JS nuevo está corriendo
-    console.log("--- DATOS A ENVIAR A SUPABASE ---");
-    console.log("requiere_opciones (Debe ser true):", requiere_opciones);
-    console.log("lista_opciones:", lista_opciones);
-    console.log("cantidad_opciones:", cantidad_opciones);
 
     const productosSeleccionados = Array.from(document.querySelectorAll('.chk-combo-producto:checked')).map(c => parseInt(c.value, 10));
 
@@ -825,15 +829,15 @@ async function guardarCombo() {
     if (productosSeleccionados.length === 0) { admToast('Selecciona al menos un producto para el combo.', 'error'); return; }
 
     const payload = {
-        nombre,
+        nombre: nombre,
         precio_normal: normal,
         precio_descuento: descuento,
-        descripcion,
-        activo,
+        descripcion: descripcion,
+        activo: activo,
         imagen: imagen || null,
-        requiere_opciones, 
-        lista_opciones,    
-        cantidad_opciones  
+        requiere_opciones: requiere_opciones, // Boolean real
+        lista_opciones: lista_opciones,       // String o null limpio
+        cantidad_opciones: cantidad_opciones  // Número exacto (0 si es false)
     };
 
     try {
