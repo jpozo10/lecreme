@@ -1382,14 +1382,15 @@ async function procesarPedidoWhatsApp() {
                 celular: celular,
                 barrio: entrega === 'Domicilio' ? barrio : null
             })
-            .select('id_pedido')
+            .select('id_pedido, numero_pedido_diario')
             .single();
 
         if (errPedido || !nuevoPedido) {
             throw new Error('No se pudo registrar el pedido principal.');
         }
 
-        const numeroPedido = nuevoPedido.id_pedido;
+        const idPedidoReal = nuevoPedido.id_pedido;      // usar SIEMPRE para relaciones (pedido_detalle)
+        const numeroPedido = nuevoPedido.numero_pedido_diario; // usar SOLO para mostrar al cliente/WhatsApp
 
         // 2. LEER ARTÍCULOS DEL CARRITO
         const { data: itemsCarrito, error: errCarrito } = await sb
@@ -1401,7 +1402,7 @@ async function procesarPedidoWhatsApp() {
             // 3. GUARDAR EL DETALLE EN PARALELO
             await Promise.all(itemsCarrito.map(item =>
                 sb.from('pedido_detalle').insert({
-                    id_pedido: numeroPedido,
+                    id_pedido: idPedidoReal,
                     id_producto: item.id_producto || null,
                     id_combo: item.id_combo || null,
                     id_tamanio: item.id_tamanio || null,
