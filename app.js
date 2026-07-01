@@ -873,7 +873,6 @@ async function confirmarAgregado() {
 
 
     const txtNotas = document.getElementById('modal-observaciones');
-    const selectTam = document.getElementById('lc-product-tamanio');
     const toppingsSeleccionados = [];
 
     // Validación para bebidas (producto requiere_opciones)
@@ -902,8 +901,11 @@ async function confirmarAgregado() {
     });
 
 
-    const idTamanio = (selectTam && selectTam.value) ? parseInt(selectTam.value, 10) : null;
+    // 🎯 CORRECCIÓN: Leer el tamaño desde el nuevo selector de vasos visuales
+    const vasoSeleccionado = document.querySelector('#lc-sizes-render-container .lc-size-option.selected');
+    const idTamanio = vasoSeleccionado ? (parseInt(vasoSeleccionado.dataset.id, 10) || null) : null;
     const observacionesBase = txtNotas ? txtNotas.value : '';
+
     const observaciones = opcionDinamicaProd
         ? obtenerObservacionesCombinadas(observacionesBase, `Opción: ${opcionDinamicaProd}`)
         : observacionesBase;
