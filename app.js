@@ -8,6 +8,8 @@ let idProductoSeleccionado = 0;
 const productosCache = {};   // id_producto -> fila de productos
 const categoriasConfig = {}; // id_categoria -> fila de categorias (para saber lleva_toppings)
 const combosCache = {};      // id_combo -> fila de combos
+const comboGruposCache = {};     // id_combo -> array de grupos
+const comboProductosCache = {};  // id_grupo -> array de productos del grupo
 
 const LOGO_URL = 'https://yimihpnzkpvqizojpewk.supabase.co/storage/v1/object/public/Menu/Favicon/IMAGEN%20LECREME.jpg'; 
 const DEFAULT_WHATSAPP_NUMBER = '573148679569';
@@ -234,36 +236,81 @@ function crearProductoCard(prod) {
 // ─────────────────────────────────────────────────────────
 
 async function renderizarCombos() {
-    // Nota: los combos "COMBO #1" y "COMBO #2" requieren selección de sabores de granizado.
-    // La UI se reutiliza desde el modal existente de producto (lc-topping-modal).
-
-    const wrapper = document.getElementById('lc-combos-wrapper');
-    const grid = document.getElementById('lc-combos-grid');
-    if (!wrapper || !grid) return;
+    const section = document.getElementById('lc-combos-section');
+    const container = document.getElementById('lc-combos-container');
+    if (!container || !section) return;
 
     try {
-        const { data: combos, error } = await sb
+        // 1. Traer los combos activos
+        const { data: combos, error: comboErr } = await sb
             .from('combos')
             .select('*')
-            .eq('activo', 'S')
-            .order('id_combo', { ascending: true });
+            .eq('estado', 'Activo');
 
-        if (error) throw error;
+        if (comboErr) throw comboErr;
 
         if (!combos || combos.length === 0) {
-            wrapper.style.display = 'none';
+            section.style.display = 'none';
             return;
         }
 
-        grid.innerHTML = '';
+        section.style.display = 'block';
+        container.innerHTML = '';
+
+        // 2. Traer TODOS los grupos y TODOS los productos de combos de una sola vez para guardarlos en caché
+        const comboIds = combos.map(c => c.id_combo);
+        
+        const [gruposRes, productosRes] = await Promise.all([
+            sb.from('combo_grupos').select('*').in('id_combo', comboIds),
+            sb.from('combo_productos').select('*')
+        ]);
+
+        // Guardar grupos en caché organizados por id_combo
+        if (gruposRes.data) {
+            gruposRes.data.forEach(grupo => {
+                if (!comboGruposCache[grupo.id_combo]) comboGruposCache[grupo.id_combo] = [];
+                comboGruposCache[grupo.id_combo].push(grupo);
+            });
+        }
+
+        // Guardar productos de combos en caché organizados por id_grupo
+        if (productosRes.data) {
+            productosRes.data.forEach(prod => {
+                if (!comboProductosCache[prod.id_grupo]) comboProductosCache[prod.id_grupo] = [];
+                comboProductosCache[prod.id_grupo].push(prod);
+            });
+        }
+
+        // 3. Renderizar los combos usando el ciclo normal
         combos.forEach(combo => {
             combosCache[combo.id_combo] = combo;
-            grid.appendChild(crearComboCard(combo));
+
+            let card = document.createElement('div');
+            card.className = 'lc-combo-card';
+            
+            let imgUrl = combo.imagen_url || LOGO_URL;
+
+            card.innerHTML = `
+                <div class="lc-combo-img-wrapper">
+                    <img src="${imgUrl}" alt="${combo.nombre}" onerror="this.src='${LOGO_URL}'">
+                </div>
+                <div class="lc-combo-info">
+                    <h3>${combo.nombre}</h3>
+                    <p class="lc-combo-desc">${combo.descripcion || ''}</p>
+                    <div class="lc-combo-footer">
+                        <span class="lc-combo-price">$${formatearPrecio(combo.precio_base)}</span>
+                        <button class="lc-btn-add-combo" onclick="agregarComboAlCarrito(${combo.id_combo})">
+                            Agregar ➕
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
         });
-        wrapper.style.display = 'block';
+
     } catch (err) {
-        console.error('Error cargando combos:', err);
-        wrapper.style.display = 'none';
+        console.error("Error cargando combos:", err);
+        section.style.display = 'none';
     }
 }
 
@@ -361,107 +408,81 @@ function limpiarUIGranizadosEnModal() {
     if (txtNotas) txtNotas.value = '';
 }
 
-async function setModoModalParaCombo(combo) {
-    idProductoSeleccionado = null;
-
-    const modalTitle = document.getElementById('modal-product-name');
-    if (modalTitle) modalTitle.innerText = combo.nombre;
-
-    const modalImg = document.getElementById('modal-product-img');
-    if (modalImg) modalImg.src = combo.imagen || LOGO_URL;
-
-    // 1. Ocultar el contenedor de tamaños
-    const modalTamContainer = document.getElementById('modal-tamanio-container');
-    if (modalTamContainer) {
-        modalTamContainer.style.setProperty('display', 'none', 'important');
+function setModoModalParaCombo(combo) {
+    // Cambiar textos del modal principales
+    document.getElementById('lc-modal-title').innerText = combo.nombre;
+    document.getElementById('lc-modal-desc').innerText = combo.descripcion || '';
+    
+    let modalImg = document.getElementById('lc-modal-img');
+    if (modalImg) {
+        modalImg.src = combo.imagen_url || LOGO_URL;
     }
 
-    const selectTam = document.getElementById('lc-product-tamanio');
-    if (selectTam) {
-        selectTam.innerHTML = `<option value="" data-precio="${combo.precio_descuento}">Combo</option>`;
-    }
+    // Limpiar secciones innecesarias para combos
+    const toppingsSection = document.getElementById('lc-modal-toppings-section');
+    if (toppingsSection) toppingsSection.style.display = 'none';
+    
+    const sizesSection = document.getElementById('lc-modal-sizes-section');
+    if (sizesSection) sizesSection.style.display = 'none';
 
-    // 2. Resetear notas
-    const txtNotas = document.getElementById('modal-observaciones');
-    if (txtNotas) {
-        txtNotas.value = '';
-        txtNotas.placeholder = 'Observaciones (opcional)...';
-    }
+    // Obtener los grupos directamente desde el CÁCHÉ LOCAL
+    const grupos = comboGruposCache[combo.id_combo] || [];
+    
+    const combosSection = document.getElementById('lc-modal-combos-section');
+    combosSection.style.display = 'block';
+    combosSection.innerHTML = ''; // Limpiar opciones anteriores
 
-    const containerToppings = document.getElementById('modal-toppings-container');
-    const tituloToppings = document.getElementById('titulo-toppings');
-    const toppingsBlock = document.getElementById('lc-toppings-wrapper-block');
+    // Renderizar cada grupo usando los datos del caché
+    grupos.forEach(grupo => {
+        let grupoDiv = document.createElement('div');
+        grupoDiv.className = 'lc-modal-combo-group';
+        grupoDiv.setAttribute('data-id-grupo', grupo.id_grupo);
+        grupoDiv.setAttribute('data-nombre-grupo', grupo.nombre_grupo);
+        grupoDiv.setAttribute('data-seleccion-max', grupo.seleccion_maxima);
 
-    if (containerToppings) containerToppings.innerHTML = '';
+        grupoDiv.innerHTML = `
+            <h4>${grupo.nombre_grupo} <span class="lc-group-limit">(Selecciona máximo ${grupo.seleccion_maxima})</span></h4>
+            <div class="lc-combo-options-list"></div>
+        `;
 
-    // 🎯 NUEVA LÓGICA: Traer los grupos específicos de este combo
-    const { data: grupos, error } = await sb
-        .from('combo_grupos')
-        .select('*')
-        .eq('id_combo', combo.id_combo);
+        let optionsList = grupoDiv.querySelector('.lc-combo-options-list');
 
-    if (error) {
-        console.error('Error cargando los grupos del combo:', error);
-    }
+        // Obtener productos de este grupo desde el CÁCHÉ LOCAL
+        const productosDelGrupo = comboProductosCache[grupo.id_grupo] || [];
 
-    // 3. Mostrar y renderizar las opciones dinámicas por grupo
-    if (combo.requiere_opciones && grupos && grupos.length > 0 && containerToppings) {
-        if (toppingsBlock) toppingsBlock.style.setProperty('display', 'block', 'important');
-        if (tituloToppings) {
-            tituloToppings.style.setProperty('display', 'block', 'important');
-            tituloToppings.innerText = `Personaliza tu ${combo.nombre}:`;
-        }
-
-        let html = '';
-        
-        // Recorremos cada grupo independiente (Ej: Granizados, luego Sándwiches)
-        grupos.forEach((grupo, idx) => {
-            const opciones = grupo.lista_opciones.split(',').map(x => x.trim()).filter(Boolean);
-            const cant = Math.max(1, parseInt(grupo.cantidad_seleccionar, 10) || 1);
-
-            html += `
-            <div class="bloque-grupo-tienda" data-nombre-grupo="${escapeHtml(grupo.nombre_grupo)}" style="margin-top:15px; width:100%; border-bottom: 1px dashed #eee; padding-bottom: 10px;">
-                <label style="font-weight:700; color:#6D3B37; font-size:0.95rem; display:block;">
-                    ${escapeHtml(grupo.nombre_grupo)} <span style="font-weight:400; color:#718096; font-size:0.8rem;">(Selecciona ${cant})</span>
-                </label>`;
-
-            // Si solo debe elegir 1 opción en este grupo, pintamos 1 select limpio
-            if (cant === 1) {
-                html += `
-                <select class="lc-combo-grupo-select" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc; margin-top:6px; display:block !important;">
-                    <option value="">-- Selecciona una opción --</option>
-                    ${opciones.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
-                </select>`;
-            } 
-            // Si debe elegir más de una opción, pintamos checkboxes dinámicos
-            else {
-                html += `<div style="margin-top: 6px;">`;
-                opciones.forEach(o => {
-                    html += `
-                    <label style="display:block; margin-bottom:5px; font-weight:400; font-size:0.9rem; cursor:pointer;">
-                        <input type="checkbox" class="lc-combo-grupo-chk" data-max="${cant}" data-grupo-idx="${idx}" value="${escapeHtml(o)}" onchange="validarMaximoCheckboxesTienda(this)" style="margin-right:6px;">
-                        ${escapeHtml(o)}
-                    </label>`;
-                });
-                html += `</div>`;
-            }
-
-            html += `</div>`;
+        productosDelGrupo.forEach(prod => {
+            let itemDiv = document.createElement('div');
+            itemDiv.className = 'lc-combo-option-item';
+            
+            // Buscar si el producto existe en el productosCache general para saber si lleva topping o el nombre real
+            const datosProdGeneral = productosCache[prod.id_producto] || {};
+            const precioExtra = prod.precio_adicional > 0 ? `(+ $${formatearPrecio(prod.precio_adicional)})` : '';
+            
+            itemDiv.innerHTML = `
+                <label class="lc-checkbox-container">
+                    <input type="checkbox" 
+                           value="${prod.id_producto}" 
+                           data-precio-adicional="${prod.precio_adicional}"
+                           data-nombre="${prod.nombre_producto}"
+                           onchange="validarSeleccionGrupo(this, ${grupo.seleccion_maxima})">
+                    <span class="lc-checkmark"></span>
+                    <span class="lc-option-text">${prod.nombre_producto} ${precioExtra}</span>
+                </label>
+            `;
+            optionsList.appendChild(itemDiv);
         });
 
-        containerToppings.innerHTML = html;
-        comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO_DYNAMIC' };
-    } else {
-        if (toppingsBlock) toppingsBlock.style.setProperty('display', 'none', 'important');
-        if (tituloToppings) {
-            tituloToppings.style.setProperty('display', 'none', 'important');
-            comboSeleccionadoGranizados = { idCombo: combo.id_combo, tipo: 'COMBO3' };
-        }
-    }
+        combosSection.appendChild(grupoDiv);
+    });
 
-    // 4. Setear precio definitivo
-    const txtTotal = document.getElementById('modal-total-price');
-    if (txtTotal) txtTotal.innerText = `$${formatearPrecio(combo.precio_descuento)}`;
+    // Configurar el botón de confirmación del modal para combos
+    let btnConfirmar = document.getElementById('lc-btn-modal-confirmar');
+    btnConfirmar.onclick = function() {
+        procesarConfirmacionCombo(combo.id_combo);
+    };
+
+    calcularTotal(); 
+    abrirModal();
 }
 
 // 👀 Función auxiliar para controlar que no marquen más checkboxes de los permitidos por grupo
